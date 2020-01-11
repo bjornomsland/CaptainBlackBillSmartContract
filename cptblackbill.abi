@@ -1,0 +1,978 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sun Dec 29 14:41:03 2019",
+    "version": "eosio::abi/1.0",
+    "structs": [
+        {
+            "name": "account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "balance",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "activatchest",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "addsetting",
+            "base": "",
+            "fields": [
+                {
+                    "name": "keyname",
+                    "type": "name"
+                },
+                {
+                    "name": "stringvalue",
+                    "type": "string"
+                },
+                {
+                    "name": "assetvalue",
+                    "type": "asset"
+                },
+                {
+                    "name": "uintvalue",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "addsponsitm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sponsorname",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "targeturl",
+                    "type": "string"
+                },
+                {
+                    "name": "usdvalue",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "addtradmin",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "title",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "treasuremapurl",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "videourl",
+                    "type": "string"
+                },
+                {
+                    "name": "latitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "longitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "rankingpoint",
+                    "type": "uint64"
+                },
+                {
+                    "name": "status",
+                    "type": "string"
+                },
+                {
+                    "name": "expirationdate",
+                    "type": "uint32"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "addtreasure",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "title",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "latitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "longitude",
+                    "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "crewinfo",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "imagehash",
+                    "type": "string"
+                },
+                {
+                    "name": "quote",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "currency_stats",
+            "base": "",
+            "fields": [
+                {
+                    "name": "supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "max_supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "issuer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "erasecheck",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "erasecrew",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "eraseresult",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "erasesetting",
+            "base": "",
+            "fields": [
+                {
+                    "name": "keyname",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "erasesponitm",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "erasetcrf",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "erasetreasur",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "eraseverunlc",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "issue",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "modexpdate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "modgps",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "latitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "longitude",
+                    "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "modsetting",
+            "base": "",
+            "fields": [
+                {
+                    "name": "keyname",
+                    "type": "name"
+                },
+                {
+                    "name": "stringvalue",
+                    "type": "string"
+                },
+                {
+                    "name": "assetvalue",
+                    "type": "asset"
+                },
+                {
+                    "name": "uintvalue",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "modtreasimg",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "modtreasjson",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "jsondata",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "modtreasure",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "title",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "videourl",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "resetsecretc",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "results",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "creator",
+                    "type": "name"
+                },
+                {
+                    "name": "conqueredby",
+                    "type": "name"
+                },
+                {
+                    "name": "lostdiamondfound",
+                    "type": "bool"
+                },
+                {
+                    "name": "payouteos",
+                    "type": "asset"
+                },
+                {
+                    "name": "eosusdprice",
+                    "type": "asset"
+                },
+                {
+                    "name": "minedblkbills",
+                    "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "settings",
+            "base": "",
+            "fields": [
+                {
+                    "name": "keyname",
+                    "type": "name"
+                },
+                {
+                    "name": "stringvalue",
+                    "type": "string"
+                },
+                {
+                    "name": "assetvalue",
+                    "type": "asset"
+                },
+                {
+                    "name": "uintvalue",
+                    "type": "uint32"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "sponsoritems",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "sponsorname",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "targeturl",
+                    "type": "string"
+                },
+                {
+                    "name": "usdvalue",
+                    "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "tcrfund",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "investedamount",
+                    "type": "asset"
+                },
+                {
+                    "name": "investorpercent",
+                    "type": "float64"
+                },
+                {
+                    "name": "earnedpayout",
+                    "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "transfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "treasure",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "title",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "treasuremapurl",
+                    "type": "string"
+                },
+                {
+                    "name": "videourl",
+                    "type": "string"
+                },
+                {
+                    "name": "latitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "longitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "rankingpoint",
+                    "type": "uint64"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                },
+                {
+                    "name": "expirationdate",
+                    "type": "int32"
+                },
+                {
+                    "name": "secretcode",
+                    "type": "string"
+                },
+                {
+                    "name": "status",
+                    "type": "string"
+                },
+                {
+                    "name": "conqueredby",
+                    "type": "name"
+                },
+                {
+                    "name": "conqueredimg",
+                    "type": "string"
+                },
+                {
+                    "name": "jsondata",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "unlockchest",
+            "base": "",
+            "fields": [
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payouteos",
+                    "type": "asset"
+                },
+                {
+                    "name": "byuser",
+                    "type": "name"
+                },
+                {
+                    "name": "lostdiamondisfound",
+                    "type": "bool"
+                },
+                {
+                    "name": "verifyunlockpkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "updranking",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "upsertcrew",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "crewmember",
+                    "type": "name"
+                },
+                {
+                    "name": "imagehash",
+                    "type": "string"
+                },
+                {
+                    "name": "quote",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "verifycheck",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "byaccount",
+                    "type": "name"
+                },
+                {
+                    "name": "addtochestamount",
+                    "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "verifyunlock",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "byaccount",
+                    "type": "name"
+                },
+                {
+                    "name": "addtochestamount",
+                    "type": "asset"
+                },
+                {
+                    "name": "secretcode",
+                    "type": "string"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "activatchest",
+            "type": "activatchest",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addsetting",
+            "type": "addsetting",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addsponsitm",
+            "type": "addsponsitm",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addtradmin",
+            "type": "addtradmin",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addtreasure",
+            "type": "addtreasure",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasecheck",
+            "type": "erasecheck",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasecrew",
+            "type": "erasecrew",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "eraseresult",
+            "type": "eraseresult",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasesetting",
+            "type": "erasesetting",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasesponitm",
+            "type": "erasesponitm",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasetcrf",
+            "type": "erasetcrf",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasetreasur",
+            "type": "erasetreasur",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "eraseverunlc",
+            "type": "eraseverunlc",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "issue",
+            "type": "issue",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modexpdate",
+            "type": "modexpdate",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modgps",
+            "type": "modgps",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modsetting",
+            "type": "modsetting",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modtreasimg",
+            "type": "modtreasimg",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modtreasjson",
+            "type": "modtreasjson",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modtreasure",
+            "type": "modtreasure",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "resetsecretc",
+            "type": "resetsecretc",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transfer",
+            "type": "transfer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unlockchest",
+            "type": "unlockchest",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updranking",
+            "type": "updranking",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "upsertcrew",
+            "type": "upsertcrew",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "accounts",
+            "type": "account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "crewinfo",
+            "type": "crewinfo",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "results",
+            "type": "results",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "settings",
+            "type": "settings",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "sponsoritems",
+            "type": "sponsoritems",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "stat",
+            "type": "currency_stats",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "tcrfund",
+            "type": "tcrfund",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "treasure",
+            "type": "treasure",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "verifycheck",
+            "type": "verifycheck",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "verifyunlock",
+            "type": "verifyunlock",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "abi_extensions": []
+}
