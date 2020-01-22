@@ -202,6 +202,38 @@ public:
                 row.timestamp = now();
             });
         }
+        else if (memo.rfind("Activate SponsorItem No.", 0) == 0) {
+            uint64_t sponsorItemPkey = std::strtoull( memo.substr(24).c_str(),NULL,0 ); //Find treasure pkey from transfer memo
+
+            sponsoritems_index sponsoritems(_self, _self.value);
+            auto iterator = sponsoritems.find(sponsorItemPkey);
+            eosio_assert(iterator != sponsoritems.end(), "Sponsor item not found.");
+            eosio_assert(iterator->status == "pendingforadfeepayment", "Sponsor item is not pending for payment.");
+            eosio_assert(eos.amount >= iterator->adFeePrice.amount, "Payment amount is less than advertising fee.");
+
+            //Take percent of the transfered EOS as provision to the lost diamond owners
+            eosio::asset totcrfund = (eos * (10 * 100)) / 10000;
+            tcrfund_index tcrfund(_self, _self.value);
+            //Update investors earnedpayout base on each investors percent
+            for (auto itr = tcrfund.begin(); itr != tcrfund.end(); itr++) {
+                eosio::asset earnedpayout = (totcrfund * (itr->investorpercent * 100)) / 10000;
+                tcrfund.modify(itr, _self, [&]( auto& row ) {
+                    row.earnedpayout = row.earnedpayout + earnedpayout;
+                }); 
+            }
+
+            //Add 10 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+            auto existingiterator2 = tcrfund.find(to.value); //to = cptblackbill
+            tcrfund.modify(existingiterator2, _self, [&]( auto& row ) {
+                row.investedamount = row.investedamount + totcrfund;
+            });
+
+            //The other 50% is added to the treasure value and provision to token holders
+
+            sponsoritems.modify(iterator, _self, [&]( auto& row ) {
+                row.status = "active";
+            }); 
+        }
         else{
             
             if (memo.rfind("Activate Treasure No.", 0) == 0){
@@ -508,7 +540,8 @@ public:
     }
 
     [[eosio::action]]
-    void unlockchest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, uint64_t verifyunlockpkey) {
+    void unlockchest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, 
+                     uint64_t verifyunlockpkey, uint64_t sponsoritempkey) {
         require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
 
         //Get total amount in Lost Diamond if diamond is found in this treasure
@@ -521,6 +554,17 @@ public:
             }
 
             payouteos = payouteos + totalamountinlostdiamond; //Add lost diamond value to the treasure value
+        }
+
+        if(sponsoritempkey >= 0){
+            sponsoritems_index sponsoritems(_self, _self.value);
+            auto iterator = sponsoritems.find(sponsoritempkey);
+            sponsoritems.modify(iterator, _self, [&]( auto& row ) {
+                row.status = "robbed";
+                row.wonby = byuser;
+                row.treasurepkey = treasurepkey;
+                row.wontimestamp = now();
+            });  
         }
         
         treasure_index treasures(_code, _code.value);
@@ -738,6 +782,23 @@ public:
         verifycheck.erase(iterator);
     }
 
+    //This is used to add a verified unlock for sponsored treasures where no EOS payment is needed
+    [[eosio::action]]
+    void addverunlc(uint64_t treasurepkey, name byaccount, std::string secretcode) {
+        require_auth("cptblackbill"_n);
+        
+        //Add row to verifyunlock
+        verifyunlock_index verifyunlock(_self, _self.value);
+        verifyunlock.emplace(_self, [&]( auto& row ) {
+            row.pkey = verifyunlock.available_primary_key();
+            row.treasurepkey = treasurepkey;
+            row.secretcode = secretcode;
+            row.byaccount = byaccount;
+            row.addtochestamount = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.timestamp = now();
+        });
+    }
+
     [[eosio::action]]
     void eraseverunlc(uint64_t pkey) {
         require_auth("cptblackbill"_n);
@@ -803,8 +864,27 @@ public:
     }
 
     [[eosio::action]]
+    void adddimndhst(uint64_t treasurepkey, asset diamondValueInEos, asset diamondValueInUsd, int32_t fromTimestamp, int32_t toTimestamp)
+    {
+        require_auth("cptblackbill"_n);
+
+        eosio_assert(treasurepkey >= 0, "Invalid treasure pKey.");
+        
+        dimndhistory_index dimndhistory(_code, _code.value);
+        
+        dimndhistory.emplace(_self, [&]( auto& row ) {
+            row.pkey = dimndhistory.available_primary_key();
+            row.treasurepkey = treasurepkey;
+            row.diamondValueInEos = diamondValueInEos;
+            row.diamondValueInUsd = diamondValueInUsd;
+            row.fromTimestamp = fromTimestamp;
+            row.toTimestamp = toTimestamp;
+        });
+    }
+
+    [[eosio::action]]
     void addsponsitm(std::string sponsorname, std::string imageurl, std::string description,
-                     std::string targeturl, asset usdvalue) 
+                     std::string targeturl, asset usdvalue, asset adFeePrice) 
     {
         require_auth("cptblackbill"_n);
 
@@ -812,9 +892,9 @@ public:
         eosio_assert(description.length() <= 250, "Max length of description is 250 characters.");
         eosio_assert(targeturl.length() <= 125, "Max length of targeturl is 125 characters.");
         eosio_assert(usdvalue.amount >= 1000, "Minimum USD value for sponsored item is 10 dollar.");
+        eosio_assert(adFeePrice.amount >= 10, "Minimum EOS value for advertising fee is 0.0010 EOS.");
 
         sponsoritems_index sponsoritems(_code, _code.value);
-        
         sponsoritems.emplace(_self, [&]( auto& row ) {
             row.pkey = sponsoritems.available_primary_key();
             row.sponsorname = sponsorname;
@@ -822,6 +902,9 @@ public:
             row.description = description;
             row.targeturl = targeturl;
             row.usdvalue = usdvalue;
+            row.adFeePrice = adFeePrice;
+            row.status = "pendingforadfeepayment";
+            row.treasurepkey = -1;
             row.timestamp = now();
         });
     }
@@ -951,6 +1034,19 @@ private:
             eosio::indexed_by<"creator"_n, const_mem_fun<results, uint64_t, &results::by_creator>>, 
             eosio::indexed_by<"treasurepkey"_n, const_mem_fun<results, uint64_t, &results::by_treasurepkey>>> results_index;
 
+    //Struck to show where the lost diamond has been located earlier
+    struct [[eosio::table]] dimndhistory {
+        uint64_t pkey;
+        uint64_t treasurepkey;
+        eosio::asset diamondValueInEos;
+        eosio::asset diamondValueInUsd;
+        int32_t fromTimestamp; 
+        int32_t toTimestamp;
+        
+        uint64_t primary_key() const { return  pkey; }
+    };
+    typedef eosio::multi_index<"dimndhistory"_n, dimndhistory> dimndhistory_index;
+
     struct [[eosio::table]] sponsoritems {
         uint64_t pkey;
         std::string sponsorname;
@@ -958,6 +1054,11 @@ private:
         std::string description;
         std::string targeturl;
         eosio::asset usdvalue;
+        eosio::asset adFeePrice;
+        std::string status;
+        eosio::name wonby;
+        uint64_t treasurepkey;
+        int32_t wontimestamp;
         int32_t timestamp; //Date created - queue order
         
         uint64_t primary_key() const { return  pkey; }
@@ -1117,6 +1218,9 @@ extern "C" {
     else if(code==receiver && action==name("erasecheck").value) {
       execute_action(name(receiver), name(code), &cptblackbill::erasecheck );
     }
+    else if(code==receiver && action==name("addverunlc").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::addverunlc );
+    }
     else if(code==receiver && action==name("eraseverunlc").value) {
       execute_action(name(receiver), name(code), &cptblackbill::eraseverunlc );
     }
@@ -1131,6 +1235,9 @@ extern "C" {
     }
     else if(code==receiver && action==name("erasecrew").value) {
       execute_action(name(receiver), name(code), &cptblackbill::erasecrew );
+    }
+    else if(code==receiver && action==name("adddimndhst").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::adddimndhst );
     }
     else if(code==receiver && action==name("addsponsitm").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addsponsitm );

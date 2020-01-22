@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sun Dec 29 14:41:03 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Jan 21 22:37:17 2020",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -19,6 +19,32 @@
                 {
                     "name": "pkey",
                     "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "adddimndhst",
+            "base": "",
+            "fields": [
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "diamondValueInEos",
+                    "type": "asset"
+                },
+                {
+                    "name": "diamondValueInUsd",
+                    "type": "asset"
+                },
+                {
+                    "name": "fromTimestamp",
+                    "type": "int32"
+                },
+                {
+                    "name": "toTimestamp",
+                    "type": "int32"
                 }
             ]
         },
@@ -66,6 +92,10 @@
                 },
                 {
                     "name": "usdvalue",
+                    "type": "asset"
+                },
+                {
+                    "name": "adFeePrice",
                     "type": "asset"
                 }
             ]
@@ -155,6 +185,24 @@
             ]
         },
         {
+            "name": "addverunlc",
+            "base": "",
+            "fields": [
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "byaccount",
+                    "type": "name"
+                },
+                {
+                    "name": "secretcode",
+                    "type": "string"
+                }
+            ]
+        },
+        {
             "name": "crewinfo",
             "base": "",
             "fields": [
@@ -187,6 +235,36 @@
                 {
                     "name": "issuer",
                     "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "dimndhistory",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "diamondValueInEos",
+                    "type": "asset"
+                },
+                {
+                    "name": "diamondValueInUsd",
+                    "type": "asset"
+                },
+                {
+                    "name": "fromTimestamp",
+                    "type": "int32"
+                },
+                {
+                    "name": "toTimestamp",
+                    "type": "int32"
                 }
             ]
         },
@@ -531,6 +609,26 @@
                     "type": "asset"
                 },
                 {
+                    "name": "adFeePrice",
+                    "type": "asset"
+                },
+                {
+                    "name": "status",
+                    "type": "string"
+                },
+                {
+                    "name": "wonby",
+                    "type": "name"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "wontimestamp",
+                    "type": "int32"
+                },
+                {
                     "name": "timestamp",
                     "type": "int32"
                 }
@@ -681,6 +779,10 @@
                 {
                     "name": "verifyunlockpkey",
                     "type": "uint64"
+                },
+                {
+                    "name": "sponsoritempkey",
+                    "type": "uint64"
                 }
             ]
         },
@@ -781,6 +883,11 @@
             "ricardian_contract": ""
         },
         {
+            "name": "adddimndhst",
+            "type": "adddimndhst",
+            "ricardian_contract": ""
+        },
+        {
             "name": "addsetting",
             "type": "addsetting",
             "ricardian_contract": ""
@@ -798,6 +905,11 @@
         {
             "name": "addtreasure",
             "type": "addtreasure",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "addverunlc",
+            "type": "addverunlc",
             "ricardian_contract": ""
         },
         {
@@ -912,6 +1024,13 @@
         {
             "name": "crewinfo",
             "type": "crewinfo",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "dimndhistory",
+            "type": "dimndhistory",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
