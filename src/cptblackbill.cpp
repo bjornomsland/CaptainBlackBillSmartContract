@@ -138,8 +138,41 @@ public:
                 row.investedamount = row.investedamount + toLostDiamondValueByCptBlackBill;
             });
 
+            //2020-02-25: This will replace the code above
+            //Add 20 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+            //The provision earned to account cptblackbill is transfered to a random treasure when the lost diamond is found
+            diamondownrs_index diamondownrs(_self, _self.value);
+            auto account_index = diamondownrs.get_index<name("account")>();
+            auto diamondownrsItr = account_index.find(to.value);
+            if(diamondownrsItr == account_index.end()){
+                diamondownrs.emplace(_self, [&]( auto& row ) {
+                    row.pkey = diamondownrs.available_primary_key();
+                    row.account = to;
+                    row.investedamount = toLostDiamondValueByCptBlackBill;
+                    row.investedpercent = 0; //Null by default. Will be recalculated later
+                    row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                    row.timestamp = now();
+                });
+            }
+            else{
+                account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
+                    row.investedamount += toLostDiamondValueByCptBlackBill;
+                });            
+            }
+
             //The remaining 5 percent is accumulated on the cptblackbill account and used for cpu/net resources
             //and payout to BLKBILL token holders (See the Admin Statistics page.)
+
+            //2020-02-24 Add to diamond fund
+            eosio::asset toTokenHolders = (eos * (5 * 100)) / 10000;
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                row.toDiamondOwners += totcrfund;
+                row.toTokenHolders += toTokenHolders;
+                row.diamondValue += toLostDiamondValueByCptBlackBill;
+            });  
 
             //Add row to verifycheck
             verifycheck_index verifycheck(_self, _self.value);
@@ -185,11 +218,44 @@ public:
                 }); 
             }
 
-            //Add 25 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+            //Add 20 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+            eosio::asset toLostDiamondValueByCptBlackBill = (eos * (20 * 100)) / 10000;
             auto existingiterator2 = tcrfund.find(to.value); //to = cptblackbill
             tcrfund.modify(existingiterator2, _self, [&]( auto& row ) {
-                row.investedamount = row.investedamount + totcrfund;
+                row.investedamount = row.investedamount + toLostDiamondValueByCptBlackBill;
             });
+
+            //2020-02-25: This will replace the code above
+            //Add 20 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+            diamondownrs_index diamondownrs(_self, _self.value);
+            auto account_index = diamondownrs.get_index<name("account")>();
+            auto diamondownrsItr = account_index.find(to.value);
+            if(diamondownrsItr == account_index.end()){
+                diamondownrs.emplace(_self, [&]( auto& row ) {
+                    row.pkey = diamondownrs.available_primary_key();
+                    row.account = to;
+                    row.investedamount = toLostDiamondValueByCptBlackBill;
+                    row.investedpercent = 0; //Null by default. Will be recalculated later
+                    row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                    row.timestamp = now();
+                });
+            }
+            else{
+                account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
+                    row.investedamount += toLostDiamondValueByCptBlackBill;
+                });            
+            }
+
+            //2020-02-24 Add to diamond fund
+            eosio::asset toTokenHolders = (eos * (5 * 100)) / 10000;
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                row.toDiamondOwners += totcrfund;
+                row.toTokenHolders += toTokenHolders;
+                row.diamondValue += toLostDiamondValueByCptBlackBill;
+            });  
             
             //Add row to verifyunlock
             verifyunlock_index verifyunlock(_self, _self.value);
@@ -228,7 +294,40 @@ public:
                 row.investedamount = row.investedamount + totcrfund;
             });
 
-            //The other 50% is added to the treasure value and provision to token holders
+            //2020-02-25: This will replace the code above
+            //Add 10 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+            diamondownrs_index diamondownrs(_self, _self.value);
+            auto account_index = diamondownrs.get_index<name("account")>();
+            auto diamondownrsItr = account_index.find(to.value);
+            if(diamondownrsItr == account_index.end()){
+                diamondownrs.emplace(_self, [&]( auto& row ) {
+                    row.pkey = diamondownrs.available_primary_key();
+                    row.account = to;
+                    row.investedamount = totcrfund;
+                    row.investedpercent = 0; //Null by default. Will be recalculated later
+                    row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                    row.timestamp = now();
+                });
+            }
+            else{
+                account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
+                    row.investedamount += totcrfund;
+                });            
+            }
+
+
+            //2020-02-24 Add to diamond fund
+            eosio::asset toTokenHolders = (eos * (30 * 100)) / 10000;
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                row.toDiamondOwners += totcrfund; //10%
+                row.toTokenHolders += toTokenHolders; //30%
+                row.diamondValue += totcrfund; //10%
+            });  
+
+            //The other 50% is added to the treasure value 
 
             sponsoritems.modify(iterator, _self, [&]( auto& row ) {
                 row.status = "active";
@@ -279,6 +378,27 @@ public:
                         row.investedamount = row.investedamount + eos;
                     });            
                 }
+
+                //2020-02-25: This will replace the code above
+                //Insert or update invested amount for diamond owner.
+                diamondownrs_index diamondownrs(_self, _self.value);
+                auto account_index = diamondownrs.get_index<name("account")>();
+                auto diamondownrsItr = account_index.find(from.value);
+                if(diamondownrsItr == account_index.end()){
+                    diamondownrs.emplace(_self, [&]( auto& row ) {
+                        row.pkey = diamondownrs.available_primary_key();
+                        row.account = from;
+                        row.investedamount = eos;
+                        row.investedpercent = 0; //Null by default. Will be recalculated later
+                        row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                        row.timestamp = now();
+                    });
+                }
+                else{
+                    account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
+                        row.investedamount += eos;
+                    });            
+                }
                 
                 //Get total amount invested from all accounts
                 eosio::asset totalinvestedamount = eosio::asset(0, symbol(symbol_code("EOS"), 4));
@@ -298,7 +418,15 @@ public:
                     }); 
                 }
 
-                cptblackbill::issue(from, eosio::asset(1000, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLs for investing in the lost diamond.") );
+                //2020-02-24 Add to diamond fund
+                diamondfund_index diamondfund(_self, _self.value);
+                auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+                auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+                diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                    row.diamondValue += eos; //100%
+                });  
+
+                cptblackbill::issue(from, eosio::asset(10, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLs for investing in the lost diamond.") );
             
             }
             else{
@@ -556,7 +684,7 @@ public:
             payouteos = payouteos + totalamountinlostdiamond; //Add lost diamond value to the treasure value
         }
 
-        if(sponsoritempkey >= 0){
+        if(sponsoritempkey > 0){ //Sponsor item pKey must always be larger than 0. 
             sponsoritems_index sponsoritems(_self, _self.value);
             auto iterator = sponsoritems.find(sponsoritempkey);
             sponsoritems.modify(iterator, _self, [&]( auto& row ) {
@@ -634,12 +762,12 @@ public:
                     ).send();
                 }                
 
-                //Reward finder for using CptBlackBill
-                cptblackbill::issue(byuser, eosio::asset(10000, symbol(symbol_code("BLKBILL"), 4)), std::string("1 BLKBILL token as reward for unlocking treasure.") );
+                //Reward finder for using CptBlackBill. 10000 = 1 BLKBILL
+                cptblackbill::issue(byuser, eosio::asset(10, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for unlocking treasure.") );
                 //send_summary(byuser, "1 BLKBILL token as reward for unlocking a treasure.");
 
                 //Reward creator for creating content 
-                cptblackbill::issue(treasureowner, eosio::asset(20000, symbol(symbol_code("BLKBILL"), 4)), std::string("2 BLKBILL token as reward for someone unlocking your treasure.") );
+                cptblackbill::issue(treasureowner, eosio::asset(20, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for someone unlocking your treasure.") );
                 //send_summary(treasureowner, "2 BLKBILL token as reward for someone unlocking your treasure.");
                 
                 //Update 2018-12-28 Add user who unlocked tresure to the result table for easy access on scoreboard in dapp
@@ -653,7 +781,7 @@ public:
                     row.lostdiamondfound = lostdiamondisfound;
                     row.payouteos = payouteos;
                     row.eosusdprice = getEosUsdPrice(); //2019-01-08
-                    row.minedblkbills = eosio::asset(30000, symbol(symbol_code("BLKBILL"), 4));
+                    row.minedblkbills = eosio::asset(300, symbol(symbol_code("BLKBILL"), 4));
                     row.timestamp = now();
                 });
 
@@ -688,6 +816,153 @@ public:
                 } 
             }
         });
+    }
+
+
+    [[eosio::action]]
+    void btulla(name byuser, uint64_t fromPkey, asset testeos, uint64_t toPkey) {
+        require_auth("cptblackbill"_n);
+
+        /*
+        diamondfund_index diamondfund(_code, _code.value);
+        auto itr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto iterator = diamondfund.find(itr->pkey);
+        diamondfund.modify(iterator, _self, [&]( auto& row ) {
+            row.diamondValue = eosio::asset(2380114, symbol(symbol_code("EOS"), 4));
+            row.toDiamondOwners = eosio::asset(678182, symbol(symbol_code("EOS"), 4));
+            row.toTokenHolders = eosio::asset(57556, symbol(symbol_code("EOS"), 4));
+        }); */
+
+        //name diamondOwner = "adventurelov"_n;
+
+
+        //Insert or update invested amount for diamond owner.
+        /*diamondownrs_index diamondownrs(_self, _self.value);
+        auto account_index = diamondownrs.get_index<name("account")>();
+        auto diamondownrsItr = account_index.find(diamondOwner.value);
+        if(diamondownrsItr == account_index.end()){
+            diamondownrs.emplace(_self, [&]( auto& row ) {
+                row.pkey = diamondownrs.available_primary_key();
+                row.account = diamondOwner;
+                row.investedamount = investedAmount;
+                row.investedpercent = 0; //Null by default. Will be recalculated later
+                row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.timestamp = now();
+            });
+        }
+        else{
+            account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
+                row.investedamount += eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            });            
+        }*/
+
+        /*
+        uint64_t pkey;
+        eosio::name account;
+        eosio::asset investedamount;
+        double investedpercent;
+        eosio::asset earnedpayout;
+        int32_t timestamp;
+        */
+        
+        //Remove test record
+        /*
+        diamondfund_index diamondfund(_code, _code.value);
+        auto iterator = diamondfund.find(0);
+        diamondfund.erase(iterator);
+
+        iterator = diamondfund.find(1);
+        diamondfund.erase(iterator);
+        */
+
+
+        /*
+        diamondfund_index diamondfund(_code, _code.value);
+        auto itr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto iterator = diamondfund.find(itr->pkey);
+        diamondfund.modify(iterator, _self, [&]( auto& row ) {
+            row.remDiamondOwners = row.toDiamondOwners;
+            row.remTokenHolders = row.toTokenHolders;
+            row.foundTimestamp = now();
+            row.foundInTreasurePkey = 1;
+            row.foundByaccount = ;
+        });
+
+        diamondfund.emplace(_self, [&]( auto& row ) { 
+            row.pkey = diamondfund.available_primary_key();
+            row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.remDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.remTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.diamondValue = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.foundTimestamp = 0;
+        });
+        */ 
+
+        /*diamondfund_index diamondfund(_code, _code.value);
+        auto itr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto iterator = diamondfund.find(itr->pkey);
+        diamondfund.modify(iterator, _self, [&]( auto& row ) {
+            row.toDiamondOwners = eosio::asset(10, symbol(symbol_code("EOS"), 4));
+            row.toTokenHolders = eosio::asset(1, symbol(symbol_code("EOS"), 4));
+            row.diamondValue = eosio::asset(1, symbol(symbol_code("EOS"), 4));
+        }); */ 
+        
+        /*
+        diamondfund_index diamondfund(_code, _code.value);
+        diamondfund.emplace(_self, [&]( auto& row ) { 
+            row.pkey = diamondfund.available_primary_key();
+            row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.remDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.remTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.diamondValue = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+            row.foundTimestamp = 0;
+        }); */
+    }
+
+    [[eosio::action]]
+    void calcdmndprov(uint64_t fromPkey) {
+        require_auth("cptblackbill"_n);
+
+        /*diamondfund_index diamondfund(_code, _code.value);
+        auto itr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto iterator = diamondfund.find(itr->pkey);
+        diamondfund.modify(iterator, _self, [&]( auto& row ) {
+            row.diamondValue = eosio::asset(2380114, symbol(symbol_code("EOS"), 4));
+            row.toDiamondOwners = eosio::asset(678182, symbol(symbol_code("EOS"), 4));
+            row.toTokenHolders = eosio::asset(57556, symbol(symbol_code("EOS"), 4));
+        });*/
+
+        //Get total value of current diamond
+        diamondfund_index diamondfund(_code, _code.value);
+        auto lastAddedDiamondItr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto dmndFundItr = diamondfund.find(lastAddedDiamondItr->pkey);
+        //auto iterator = verifyunlock.find(verifyunlockpkey);
+        eosio_assert(dmndFundItr != diamondfund.end(), "No active diamond found");
+        eosio_assert(dmndFundItr->foundTimestamp == 0, "No active diamond found.");
+        double diamondValue = dmndFundItr->diamondValue.amount;
+        double toDiamondOwners = dmndFundItr->toDiamondOwners.amount;
+
+        //Update investor percent and earned provision. 100 updates for each execute.
+        diamondownrs_index diamondownrs(_code, _code.value);
+        auto startItr = diamondownrs.lower_bound(fromPkey);
+        auto endItr = diamondownrs.upper_bound(fromPkey + 100);
+        for (auto itr = startItr; itr != endItr; itr++) {
+            double newinvestorpercent = 100;
+            double earnedProvision = 0;
+            uint64_t earnedProvisionInEos = 0;
+            if(diamondValue > 0){
+                newinvestorpercent = 100 * itr->investedamount.amount / diamondValue; 
+                earnedProvision = (toDiamondOwners * (newinvestorpercent / 100));
+                earnedProvisionInEos = earnedProvision;
+            }
+            
+            diamondownrs.modify(itr, _self, [&]( auto& row ) {
+                row.investedpercent = newinvestorpercent;
+                row.earnedpayout = eosio::asset(earnedProvisionInEos, symbol(symbol_code("EOS"), 4));
+            }); 
+        }
     }
 
     [[eosio::action]]
@@ -978,6 +1253,36 @@ private:
     };
     typedef eosio::multi_index<"tcrfund"_n, tcrfund> tcrfund_index;
     
+    struct [[eosio::table]] diamondfund {
+        uint64_t pkey;
+        eosio::asset toDiamondOwners;
+        eosio::asset toTokenHolders;
+        eosio::asset remDiamondOwners; //Remaining payout to diamond owners
+        eosio::asset remTokenHolders; //Remaining payout to diamon owners
+        eosio::asset diamondValue;
+        std::string memo;
+        int32_t foundTimestamp;
+        uint64_t foundInTreasurePkey;
+        eosio::name foundByaccount;
+
+        uint64_t primary_key() const { return  pkey; }
+    };
+    typedef eosio::multi_index<"diamondfund"_n, diamondfund> diamondfund_index;
+
+    struct [[eosio::table]] diamondownrs {
+        uint64_t pkey;
+        eosio::name account;
+        eosio::asset investedamount;
+        double investedpercent;
+        eosio::asset earnedpayout;
+        int32_t timestamp;
+
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_account() const {return account.value; } //second key, can be non-unique
+    };
+    typedef eosio::multi_index<"diamondownrs"_n, diamondownrs, 
+            eosio::indexed_by<"account"_n, const_mem_fun<diamondownrs, uint64_t, &diamondownrs::by_account>>> diamondownrs_index;
+
     struct [[eosio::table]] verifycheck {
         uint64_t pkey;
         uint64_t treasurepkey;
@@ -1172,6 +1477,12 @@ extern "C" {
     //cptblackbill _cptblackbill(receiver);
     if(code==receiver && action==name("addtreasure").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addtreasure );
+    }
+    else if(code==receiver && action==name("btulla").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::btulla );
+    }
+    else if(code==receiver && action==name("calcdmndprov").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::calcdmndprov );
     }
     else if(code==receiver && action==name("addtradmin").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addtradmin );

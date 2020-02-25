@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Jan 21 22:37:17 2020",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Feb 25 23:59:51 2020",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -203,6 +203,38 @@
             ]
         },
         {
+            "name": "btulla",
+            "base": "",
+            "fields": [
+                {
+                    "name": "byuser",
+                    "type": "name"
+                },
+                {
+                    "name": "fromPkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "testeos",
+                    "type": "asset"
+                },
+                {
+                    "name": "toPkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "calcdmndprov",
+            "base": "",
+            "fields": [
+                {
+                    "name": "fromPkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "crewinfo",
             "base": "",
             "fields": [
@@ -235,6 +267,82 @@
                 {
                     "name": "issuer",
                     "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "diamondfund",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "toDiamondOwners",
+                    "type": "asset"
+                },
+                {
+                    "name": "toTokenHolders",
+                    "type": "asset"
+                },
+                {
+                    "name": "remDiamondOwners",
+                    "type": "asset"
+                },
+                {
+                    "name": "remTokenHolders",
+                    "type": "asset"
+                },
+                {
+                    "name": "diamondValue",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                },
+                {
+                    "name": "foundTimestamp",
+                    "type": "int32"
+                },
+                {
+                    "name": "foundInTreasurePkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "foundByaccount",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "diamondownrs",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "investedamount",
+                    "type": "asset"
+                },
+                {
+                    "name": "investedpercent",
+                    "type": "float64"
+                },
+                {
+                    "name": "earnedpayout",
+                    "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
                 }
             ]
         },
@@ -913,6 +1021,16 @@
             "ricardian_contract": ""
         },
         {
+            "name": "btulla",
+            "type": "btulla",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "calcdmndprov",
+            "type": "calcdmndprov",
+            "ricardian_contract": ""
+        },
+        {
             "name": "erasecheck",
             "type": "erasecheck",
             "ricardian_contract": ""
@@ -1024,6 +1142,20 @@
         {
             "name": "crewinfo",
             "type": "crewinfo",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "diamondfund",
+            "type": "diamondfund",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "diamondownrs",
+            "type": "diamondownrs",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
