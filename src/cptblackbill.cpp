@@ -922,7 +922,7 @@ public:
     }
 
     [[eosio::action]]
-    void calcdmndprov(uint64_t fromPkey) {
+    void calcdmndprov(uint64_t fromPkey, name batchName) {
         require_auth("cptblackbill"_n);
 
         /*diamondfund_index diamondfund(_code, _code.value);
@@ -934,20 +934,112 @@ public:
             row.toTokenHolders = eosio::asset(57556, symbol(symbol_code("EOS"), 4));
         });*/
 
-        //Get total value of current diamond
+        //Copy all diamond owners to diamondownrs
+        /*tcrfund_index tcrfund(_self, _self.value);
+        diamondownrs_index diamondownrs(_self, _self.value);
+        for (auto itr = tcrfund.begin(); itr != tcrfund.end(); itr++) {
+            diamondownrs.emplace(_self, [&]( auto& row ) {
+                row.pkey = diamondownrs.available_primary_key();
+                row.account = itr->account;
+                row.investedamount = itr->investedamount;
+                row.investedpercent = 0; //Null by default. Will be recalculated later
+                row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.timestamp = itr->timestamp;
+            });
+        }*/
+        //uint64_t pkey;
+        //eosio::name account;
+        //eosio::asset investedamount;
+        //double investedpercent;
+        //eosio::asset earnedpayout;
+        //int32_t timestamp;
+        //eosio::name batchname;
+
+
+
+
+        //Erase all diamond owners
+        /*
+        diamondownrs_index diamondownrs(_code, _code.value);
+        auto itr = diamondownrs.begin();
+        while(itr != diamondownrs.end()) {
+            itr = diamondownrs.erase(itr);
+        }*/
+
+        //for (auto itr = diamondownrs.begin(); itr != diamondownrs.end(); itr++) {
+        //    diamondownrs.erase(itr);   
+        //}
+     
+
+        
+        //Find and get info about the current diamond
         diamondfund_index diamondfund(_code, _code.value);
         auto lastAddedDiamondItr = diamondfund.rbegin(); //Find the last added diamond fund item
         auto dmndFundItr = diamondfund.find(lastAddedDiamondItr->pkey);
-        //auto iterator = verifyunlock.find(verifyunlockpkey);
         eosio_assert(dmndFundItr != diamondfund.end(), "No active diamond found");
-        eosio_assert(dmndFundItr->foundTimestamp == 0, "No active diamond found.");
+        
+        //If the diamond is found - then mark batch as redyforpyout. This will be the final
+        //calculation of provision that is sent to payout table 
+        if(dmndFundItr->foundTimestamp > 0){
+            batchName = "redyforpyout"_n;   
+        }
         double diamondValue = dmndFundItr->diamondValue.amount;
         double toDiamondOwners = dmndFundItr->toDiamondOwners.amount;
+
+        /*
+        uint64_t counter = 0;
+        std::string debugInfo = "";
+
+        //Get upper_bound
+        
+        diamondownrs_index diamondownrs(_code, _code.value);
+        auto redyforpyout_index = diamondownrs.get_index<name("batchname")>();
+        auto redyforpyoutItr = redyforpyout_index.find(batchName.value); // upper_bound(batchName.value);
+        for (auto itr = redyforpyoutItr.begin(); itr != redyforpyoutItr.end(); itr++) {
+            debugInfo += std::to_string(itr->pkey) + "-" + name(itr->account);     
+        }*/
+        
+        /*if(redyforpyoutItr == redyforpyout_index.end()){
+            debugInfo = "NewBatchNo";
+            fromPkey = 0;
+        }
+        else if(redyforpyoutItr == redyforpyout_index.begin())
+            debugInfo = "Begin";
+        else{
+            debugInfo = "ExistinBatchNoA";
+            //fromPkey = redyforpyoutItr.rbegin->pkey; // redyforpyout_index.rbegin()->pkey; //crend = get lowest primary key value
+            while (redyforpyoutItr != redyforpyout_index.end()) {
+                counter++;
+                redyforpyoutItr++;
+                //fromPkey = redyforpyoutItr->pkey;
+                debugInfo += std::to_string(redyforpyoutItr->pkey) + ";";
+            }
+
+            debugInfo += ":Count: " + std::to_string(counter);
+        } */
+            
+        
+        
+        
+
+        //eosio_assert(redyforpyoutItr != redyforpyout_index.end(), "All owners are recalculated.");
+
+        /*
+        name settingTestName = "testtesttest"_n;
+        settings_index settings(_code, _code.value);
+        auto iterator = settings.find(settingTestName.value);
+        eosio_assert(iterator != settings.end(), "Setting not found");
+        settings.modify(iterator, _self, [&]( auto& row ) {
+            row.stringvalue = debugInfo;
+            row.uintvalue = fromPkey; //redyforpyoutItr->pkey;
+            row.timestamp = now();
+        }); */
+
 
         //Update investor percent and earned provision. 100 updates for each execute.
         diamondownrs_index diamondownrs(_code, _code.value);
         auto startItr = diamondownrs.lower_bound(fromPkey);
-        auto endItr = diamondownrs.upper_bound(fromPkey + 100);
+        auto endItr = diamondownrs.upper_bound(fromPkey + 2);
         for (auto itr = startItr; itr != endItr; itr++) {
             double newinvestorpercent = 100;
             double earnedProvision = 0;
@@ -961,7 +1053,108 @@ public:
             diamondownrs.modify(itr, _self, [&]( auto& row ) {
                 row.investedpercent = newinvestorpercent;
                 row.earnedpayout = eosio::asset(earnedProvisionInEos, symbol(symbol_code("EOS"), 4));
+                row.batchname = batchName;
             }); 
+        }
+    }
+
+    [[eosio::action]]
+    void prepdmndprov() {
+        require_auth("cptblackbill"_n);
+
+        //Todo: Check that all rows are marked as redyforpyout
+
+        diamondownrs_index diamondownrs(_code, _code.value);
+        auto itr = diamondownrs.begin();
+        uint64_t counter = 0;
+        while(itr != diamondownrs.end()) {
+            payoutdmndow_index payoutdmndow(_self, _self.value);
+            auto payoutAccountItr = payoutdmndow.find(itr->account.value);
+            if(payoutAccountItr == payoutdmndow.end()){
+                payoutdmndow.emplace(_self, [&]( auto& row ) {
+                    row.account = itr->account;
+                    row.payoutamount = itr->earnedpayout;
+                    row.memo = "Diamond Owner Provision"; 
+                });
+            }
+            else{
+                payoutdmndow.modify(payoutAccountItr, _self, [&]( auto& row ) {
+                    row.payoutamount += itr->earnedpayout;
+                });            
+            }
+            
+            itr = diamondownrs.erase(itr);
+
+            counter++;
+            if(counter > 3)
+                break;
+        }
+
+        //Check if all rows are prepared and deleted. Then add a new diamond with zero value
+        if(itr == diamondownrs.end()){
+            diamondfund_index diamondfund(_code, _code.value);
+            diamondfund.emplace(_self, [&]( auto& row ) { 
+                row.pkey = diamondfund.available_primary_key();
+                row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.remDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.remTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.diamondValue = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                row.foundTimestamp = 0;
+            });
+        }
+
+
+        /*
+        uint64_t counter = 0;
+        diamondownrs_index diamondownrs(_self, _self.value);
+        for (auto itr = diamondownrs.begin(); itr != diamondownrs.end(); itr++) {
+            
+            payoutdmndow_index payoutdmndow(_self, _self.value);
+            auto payoutAccountItr = payoutdmndow.find(itr->account.value);
+            if(payoutAccountItr == payoutdmndow.end()){
+                payoutdmndow.emplace(_self, [&]( auto& row ) {
+                    row.account = itr->account;
+                    row.payoutamount = itr->earnedpayout;
+                    row.memo = "Diamond Owner Provision"; 
+                });
+            }
+            else{
+                payoutdmndow.modify(payoutAccountItr, _self, [&]( auto& row ) {
+                    row.payoutamount += itr->earnedpayout;
+                });            
+            }
+            
+            counter++;
+            if(counter > 2)
+                break;
+        }*/
+    }
+
+    [[eosio::action]]
+    void payout(name toAccount) {
+        require_auth("cptblackbill"_n);
+
+        payoutdmndow_index payoutdmndow(_code, _code.value);
+        auto itr = payoutdmndow.begin();
+        uint64_t counter = 0;
+        while(itr != payoutdmndow.end()) {
+            
+            //Send payment to account: itr->account  Amount: itr->payoutamount   Memo: itr->memo
+            if(itr->payoutamount.amount > 0 && itr->account != "cptblackbill"_n) 
+            {
+                //action(
+                //    permission_level{ get_self(), "active"_n },
+                //    "eosio.token"_n, "transfer"_n,
+                //    std::make_tuple(get_self(), itr->account, itr->payoutamount, std::string("Lost Diamond Owner Provision."))
+                //).send();
+
+                itr = payoutdmndow.erase(itr);
+            }
+            
+            counter++;
+            if(counter > 10)
+                break;
         }
     }
 
@@ -1276,12 +1469,34 @@ private:
         double investedpercent;
         eosio::asset earnedpayout;
         int32_t timestamp;
+        eosio::name batchname;
 
         uint64_t primary_key() const { return  pkey; }
         uint64_t by_account() const {return account.value; } //second key, can be non-unique
+        uint64_t by_batchname() const {return batchname.value; } //third key, can be non-unique
     };
     typedef eosio::multi_index<"diamondownrs"_n, diamondownrs, 
-            eosio::indexed_by<"account"_n, const_mem_fun<diamondownrs, uint64_t, &diamondownrs::by_account>>> diamondownrs_index;
+            eosio::indexed_by<"account"_n, const_mem_fun<diamondownrs, uint64_t, &diamondownrs::by_account>>,
+            eosio::indexed_by<"batchname"_n, const_mem_fun<diamondownrs, uint64_t, &diamondownrs::by_batchname>>> diamondownrs_index;
+
+    struct [[eosio::table]] payoutdmndow { //Payout table for diamond owners
+        eosio::name account;
+        eosio::asset payoutamount;
+        std::string memo;
+
+        uint64_t primary_key() const { return  account.value; }
+    };
+    typedef eosio::multi_index<"payoutdmndow"_n, payoutdmndow> payoutdmndow_index;
+
+    struct [[eosio::table]] payouttokenh { //Payout table for token holders
+        eosio::name account;
+        eosio::asset payoutamount;
+        std::string memo;
+
+        uint64_t primary_key() const { return  account.value; }
+    };
+    typedef eosio::multi_index<"payouttokenh"_n, payouttokenh> payouttokenh_index;
+
 
     struct [[eosio::table]] verifycheck {
         uint64_t pkey;
@@ -1483,6 +1698,12 @@ extern "C" {
     }
     else if(code==receiver && action==name("calcdmndprov").value) {
       execute_action(name(receiver), name(code), &cptblackbill::calcdmndprov );
+    }
+    else if(code==receiver && action==name("prepdmndprov").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::prepdmndprov );
+    }
+    else if(code==receiver && action==name("payout").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::payout );
     }
     else if(code==receiver && action==name("addtradmin").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addtradmin );

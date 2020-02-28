@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Feb 25 23:59:51 2020",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sat Feb 29 00:39:58 2020",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -231,6 +231,10 @@
                 {
                     "name": "fromPkey",
                     "type": "uint64"
+                },
+                {
+                    "name": "batchName",
+                    "type": "name"
                 }
             ]
         },
@@ -343,6 +347,10 @@
                 {
                     "name": "timestamp",
                     "type": "int32"
+                },
+                {
+                    "name": "batchname",
+                    "type": "name"
                 }
             ]
         },
@@ -601,6 +609,57 @@
                     "type": "string"
                 }
             ]
+        },
+        {
+            "name": "payout",
+            "base": "",
+            "fields": [
+                {
+                    "name": "toAccount",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "payoutdmndow",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "payoutamount",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "payouttokenh",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "payoutamount",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "prepdmndprov",
+            "base": "",
+            "fields": []
         },
         {
             "name": "resetsecretc",
@@ -1106,6 +1165,16 @@
             "ricardian_contract": ""
         },
         {
+            "name": "payout",
+            "type": "payout",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "prepdmndprov",
+            "type": "prepdmndprov",
+            "ricardian_contract": ""
+        },
+        {
             "name": "resetsecretc",
             "type": "resetsecretc",
             "ricardian_contract": ""
@@ -1163,6 +1232,20 @@
         {
             "name": "dimndhistory",
             "type": "dimndhistory",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "payoutdmndow",
+            "type": "payoutdmndow",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "payouttokenh",
+            "type": "payouttokenh",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
