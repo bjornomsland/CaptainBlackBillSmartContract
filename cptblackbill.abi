@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sat Feb 29 00:39:58 2020",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Mar  4 04:31:26 2020",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -185,24 +185,6 @@
             ]
         },
         {
-            "name": "addverunlc",
-            "base": "",
-            "fields": [
-                {
-                    "name": "treasurepkey",
-                    "type": "uint64"
-                },
-                {
-                    "name": "byaccount",
-                    "type": "name"
-                },
-                {
-                    "name": "secretcode",
-                    "type": "string"
-                }
-            ]
-        },
-        {
             "name": "btulla",
             "base": "",
             "fields": [
@@ -288,14 +270,6 @@
                 },
                 {
                     "name": "toTokenHolders",
-                    "type": "asset"
-                },
-                {
-                    "name": "remDiamondOwners",
-                    "type": "asset"
-                },
-                {
-                    "name": "remTokenHolders",
                     "type": "asset"
                 },
                 {
@@ -385,16 +359,6 @@
             ]
         },
         {
-            "name": "erasecheck",
-            "base": "",
-            "fields": [
-                {
-                    "name": "pkey",
-                    "type": "uint64"
-                }
-            ]
-        },
-        {
             "name": "erasecrew",
             "base": "",
             "fields": [
@@ -452,16 +416,6 @@
                     "name": "user",
                     "type": "name"
                 },
-                {
-                    "name": "pkey",
-                    "type": "uint64"
-                }
-            ]
-        },
-        {
-            "name": "eraseverunlc",
-            "base": "",
-            "fields": [
                 {
                     "name": "pkey",
                     "type": "uint64"
@@ -944,10 +898,6 @@
                     "type": "bool"
                 },
                 {
-                    "name": "verifyunlockpkey",
-                    "type": "uint64"
-                },
-                {
                     "name": "sponsoritempkey",
                     "type": "uint64"
                 }
@@ -982,62 +932,6 @@
                 {
                     "name": "quote",
                     "type": "string"
-                }
-            ]
-        },
-        {
-            "name": "verifycheck",
-            "base": "",
-            "fields": [
-                {
-                    "name": "pkey",
-                    "type": "uint64"
-                },
-                {
-                    "name": "treasurepkey",
-                    "type": "uint64"
-                },
-                {
-                    "name": "byaccount",
-                    "type": "name"
-                },
-                {
-                    "name": "addtochestamount",
-                    "type": "asset"
-                },
-                {
-                    "name": "timestamp",
-                    "type": "int32"
-                }
-            ]
-        },
-        {
-            "name": "verifyunlock",
-            "base": "",
-            "fields": [
-                {
-                    "name": "pkey",
-                    "type": "uint64"
-                },
-                {
-                    "name": "treasurepkey",
-                    "type": "uint64"
-                },
-                {
-                    "name": "byaccount",
-                    "type": "name"
-                },
-                {
-                    "name": "addtochestamount",
-                    "type": "asset"
-                },
-                {
-                    "name": "secretcode",
-                    "type": "string"
-                },
-                {
-                    "name": "timestamp",
-                    "type": "int32"
                 }
             ]
         }
@@ -1075,11 +969,6 @@
             "ricardian_contract": ""
         },
         {
-            "name": "addverunlc",
-            "type": "addverunlc",
-            "ricardian_contract": ""
-        },
-        {
             "name": "btulla",
             "type": "btulla",
             "ricardian_contract": ""
@@ -1087,11 +976,6 @@
         {
             "name": "calcdmndprov",
             "type": "calcdmndprov",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "erasecheck",
-            "type": "erasecheck",
             "ricardian_contract": ""
         },
         {
@@ -1122,11 +1006,6 @@
         {
             "name": "erasetreasur",
             "type": "erasetreasur",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "eraseverunlc",
-            "type": "eraseverunlc",
             "ricardian_contract": ""
         },
         {
@@ -1288,20 +1167,6 @@
         {
             "name": "treasure",
             "type": "treasure",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        },
-        {
-            "name": "verifycheck",
-            "type": "verifycheck",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        },
-        {
-            "name": "verifyunlock",
-            "type": "verifyunlock",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
