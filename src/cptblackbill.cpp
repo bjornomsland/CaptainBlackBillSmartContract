@@ -738,6 +738,16 @@ public:
     void btulla(name byuser, uint64_t fromPkey, asset testeos, uint64_t toPkey) {
         require_auth("cptblackbill"_n);
 
+        dimndhistory_index dimndhistory(_code, _code.value);
+        auto iterator = dimndhistory.find(5);
+        eosio_assert(iterator != dimndhistory.end(), "DiamondHistory does not exist.");
+        dimndhistory.erase(iterator);
+
+        auto iterator2 = dimndhistory.find(6);
+        eosio_assert(iterator2 != dimndhistory.end(), "DiamondHistory does not exist.");
+        dimndhistory.erase(iterator2);
+
+
         /*
         diamondfund_index diamondfund(_self, _self.value);
         auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
