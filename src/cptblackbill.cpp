@@ -509,7 +509,21 @@ public:
     }
 
     [[eosio::action]]
-    void activatchest(uint64_t pkey) 
+    void modsecretcode(name user, uint64_t pkey, std::string encryptedSecretCode) 
+    {
+        require_auth( user );
+        treasure_index treasures(_code, _code.value);
+        auto iterator = treasures.find(pkey);
+        eosio_assert(iterator != treasures.end(), "Treasure not found");
+        eosio_assert(user == "cptblackbill"_n, "You don't have access to modify secret code on this treasure.");
+
+        treasures.modify(iterator, user, [&]( auto& row ) {
+            row.secretcode = encryptedSecretCode;
+        });
+    }
+
+    [[eosio::action]]
+    void activatchest(uint64_t pkey, std::string encryptedSecretCode) 
     {
         require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
 
@@ -535,6 +549,7 @@ public:
         
         treasures.modify(iterator, _self, [&]( auto& row ) {
             row.status = "active";
+            row.secretcode = encryptedSecretCode;
             row.rankingpoint = numberOfUniqueUserUnlocks;
             row.expirationdate = now() + 94608000; //Treasure ownership renewed for three years
         });
@@ -1616,6 +1631,9 @@ extern "C" {
     }
     else if(code==receiver && action==name("modtreasjson").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modtreasjson );
+    }
+    else if(code==receiver && action==name("modsecretcode").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::modsecretcode );
     }
     else if(code==receiver && action==name("activatchest").value) {
       execute_action(name(receiver), name(code), &cptblackbill::activatchest );

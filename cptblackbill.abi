@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Mar  4 12:24:26 2020",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Mar 13 16:10:47 2020",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -19,6 +19,10 @@
                 {
                     "name": "pkey",
                     "type": "uint64"
+                },
+                {
+                    "name": "encryptedSecretCode",
+                    "type": "string"
                 }
             ]
         },
@@ -473,6 +477,24 @@
                 {
                     "name": "longitude",
                     "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "modsecretcode",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "encryptedSecretCode",
+                    "type": "string"
                 }
             ]
         },
@@ -1021,6 +1043,11 @@
         {
             "name": "modgps",
             "type": "modgps",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modsecretcode",
+            "type": "modsecretcode",
             "ricardian_contract": ""
         },
         {
