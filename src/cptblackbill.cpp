@@ -220,21 +220,7 @@ public:
 
             ////Take percent of the transfered EOS as provision to the lost diamond owners
             eosio::asset totcrfund = (eos * (10 * 100)) / 10000;
-            //tcrfund_index tcrfund(_self, _self.value);
-            ////Update investors earnedpayout base on each investors percent
-            //for (auto itr = tcrfund.begin(); itr != tcrfund.end(); itr++) {
-            //    eosio::asset earnedpayout = (totcrfund * (itr->investorpercent * 100)) / 10000;
-            //    tcrfund.modify(itr, _self, [&]( auto& row ) {
-            //        row.earnedpayout = row.earnedpayout + earnedpayout;
-            //    }); 
-            //}
-
-            ////Add 10 percent to the value of the Lost Diamond (account cptblackbill is used for this)
-            //auto existingiterator2 = tcrfund.find(to.value); //to = cptblackbill
-            //tcrfund.modify(existingiterator2, _self, [&]( auto& row ) {
-            //    row.investedamount = row.investedamount + totcrfund;
-            //});
-
+            
             //2020-02-25: This will replace the code above
             //Add 10 percent to the value of the Lost Diamond (account cptblackbill is used for this)
             diamondownrs_index diamondownrs(_self, _self.value);
@@ -748,11 +734,102 @@ public:
         });
     }
 
+    [[eosio::action]]
+    void awardpayout(uint64_t yyyymm, name fpAccount, uint32_t fpPoints, name spAccount, uint32_t spPoints, name tpAccount, uint32_t tpPoints) {
+        require_auth("cptblackbill"_n);
+
+        //Check if this month already exists. End with error msg if exists
+        resultsmnth_index resultsmnth(_code, _code.value);
+        auto resultmnthItr = resultsmnth.find(yyyymm);
+        eosio_assert(resultmnthItr == resultsmnth.end(), "Monthly ranking award already exists.");
+
+        //Get current diamond value
+        diamondfund_index diamondfund(_self, _self.value);
+        auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+        asset diamondValue = diamondFundIterator->diamondValue;
+        uint64_t diamondPkey = diamondFundIterator->pkey; 
+        eosio_assert(diamondFundIterator->foundTimestamp == 0, "Diamond is already found. No prize available.");
+    
+        //Get award amount for first, second and third place
+        double firstPlaceAward = (diamondValue.amount * 5) / 100; //5 percent (is actually 10percent of the diamond value)
+        double secondPlaceAward = (diamondValue.amount * 3) / 100; //3 percent
+        double thirdPlaceAward = (diamondValue.amount * 2) / 100; //1 percent
+        double totalAwardInEos = firstPlaceAward + secondPlaceAward + thirdPlaceAward;
+
+        uint64_t intFirstPlaceaward = firstPlaceAward;
+        uint64_t intSecondPlaceAward = secondPlaceAward;
+        uint64_t intThirdPlaceAward = thirdPlaceAward;
+        uint64_t intRemainingDiamondValue = diamondValue.amount; 
+        
+        asset eosFirstPlaceaward = eosio::asset(intFirstPlaceaward, symbol(symbol_code("EOS"), 4));
+        asset eosSecondPlaceAward = eosio::asset(intSecondPlaceAward, symbol(symbol_code("EOS"), 4));
+        asset eosThirdPlaceAward = eosio::asset(intThirdPlaceAward, symbol(symbol_code("EOS"), 4));
+        
+        resultsmnth.emplace(_self, [&]( auto& row ) { 
+            row.pkey = yyyymm; 
+            row.fpAccount = fpAccount;
+            row.fpPoints = fpPoints;
+            row.fpEos = eosFirstPlaceaward;
+            row.spAccount = spAccount;
+            row.spPoints = spPoints;
+            row.spEos = eosSecondPlaceAward;
+            row.tpAccount = tpAccount;
+            row.tpPoints = tpPoints;
+            row.tpEos = eosThirdPlaceAward;
+            row.eosusdprice = getEosUsdPrice();
+            row.timestamp = now();
+        });
+
+        //Payout to fp, sp and tp
+        if(fpPoints > 0 && intFirstPlaceaward > 0)
+        { 
+            action(
+                permission_level{ get_self(), "active"_n },
+                "eosio.token"_n, "transfer"_n,
+                std::make_tuple(get_self(), fpAccount, eosFirstPlaceaward, std::string("Congrats! You won the last month competition with " + std::to_string(fpPoints) + " points."))
+            ).send();
+            intRemainingDiamondValue = intRemainingDiamondValue - intFirstPlaceaward;
+        }
+
+        if(spPoints > 0 && intSecondPlaceAward > 0)
+        { 
+            action(
+                permission_level{ get_self(), "active"_n },
+                "eosio.token"_n, "transfer"_n,
+                std::make_tuple(get_self(), spAccount, eosSecondPlaceAward, std::string("Congrats! You won second place in the last month competition with " + std::to_string(spPoints) + " points."))
+            ).send();
+            intRemainingDiamondValue = intRemainingDiamondValue - intSecondPlaceAward;
+        }
+
+        if(tpPoints > 0 && intThirdPlaceAward > 0)
+        { 
+            action(
+                permission_level{ get_self(), "active"_n },
+                "eosio.token"_n, "transfer"_n,
+                std::make_tuple(get_self(), tpAccount, eosThirdPlaceAward, std::string("Congrats! You won third place in the last month competition with " + std::to_string(tpPoints) + " points."))
+            ).send();
+            intRemainingDiamondValue = intRemainingDiamondValue - intThirdPlaceAward;
+        }
+
+        //Update new amount for diamond value
+        asset eosRemainingDiamondValue = eosio::asset(intRemainingDiamondValue, symbol(symbol_code("EOS"), 4));
+        diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+            row.diamondValue = eosRemainingDiamondValue;
+        });
+    }
 
     [[eosio::action]]
     void btulla(name byuser, uint64_t fromPkey, asset testeos, uint64_t toPkey) {
         require_auth("cptblackbill"_n);
 
+        /*
+        resultsmnth_index resultsmnth(_code, _code.value);
+        auto resultmnthItr = resultsmnth.find(202003);
+        eosio_assert(resultmnthItr != resultsmnth.end(), "Does not exist.");
+        resultsmnth.erase(resultmnthItr); */
+
+        /*
         dimndhistory_index dimndhistory(_code, _code.value);
         auto iterator = dimndhistory.find(5);
         eosio_assert(iterator != dimndhistory.end(), "DiamondHistory does not exist.");
@@ -761,7 +838,7 @@ public:
         auto iterator2 = dimndhistory.find(6);
         eosio_assert(iterator2 != dimndhistory.end(), "DiamondHistory does not exist.");
         dimndhistory.erase(iterator2);
-
+        */
 
         /*
         diamondfund_index diamondfund(_self, _self.value);
@@ -992,6 +1069,7 @@ public:
         auto lastAddedDiamondItr = diamondfund.rbegin(); //Find the last added diamond fund item
         auto dmndFundItr = diamondfund.find(lastAddedDiamondItr->pkey);
         eosio_assert(dmndFundItr->foundTimestamp > 0, "The current diamond has not been found. Payout preparation for diamond owners is not possible.");
+        eosio::asset toTokenHolders = dmndFundItr->toTokenHolders;
 
         //Check that all rows are marked as redyforpyout
         uint64_t numberOfDiamondOwners = 0;
@@ -1029,7 +1107,8 @@ public:
                 break;
         }
 
-        //Check if all rows are prepared and deleted. Then add a new diamond with zero value
+        //Check if all diamond owners rows are prepared and deleted. Then add a new diamond with zero value
+        //and add payout amount to token holders (use cptblackbill account until percent pr token holders is calculated)
         if(itr == diamondownrs.end()){
             diamondfund_index diamondfund(_code, _code.value);
             diamondfund.emplace(_self, [&]( auto& row ) { 
@@ -1039,6 +1118,22 @@ public:
                 row.diamondValue = eosio::asset(0, symbol(symbol_code("EOS"), 4));
                 row.foundTimestamp = 0;
             });
+
+            name accountCptBlackBill = "redyforpyout"_n; 
+            payouttokenh_index payouttokenh(_self, _self.value);
+            auto cptblackbillAccountItr = payouttokenh.find(accountCptBlackBill.value);
+            if(cptblackbillAccountItr == payouttokenh.end()){
+                payouttokenh.emplace(_self, [&]( auto& row ) { 
+                    row.account = "cptblackbill"_n;
+                    row.payoutamount = toTokenHolders;
+                    row.memo = "";
+                });
+            }
+            else{
+                payouttokenh.modify(cptblackbillAccountItr, _self, [&]( auto& row ) {
+                    row.payoutamount += toTokenHolders;
+                });   
+            }
         }
     }
 
@@ -1109,6 +1204,78 @@ public:
     }
 
     [[eosio::action]]
+    void addlike(name account, uint32_t timelineid) 
+    {
+        require_auth(account);
+        
+        timelinelike_index timelinelike(_code, _code.value);
+        
+        bool hasLiked = false;
+        uint64_t pkey = 0;
+        auto timelineidIdx = timelinelike.get_index<name("timelineid")>();
+        auto timelineidItr = timelineidIdx.lower_bound(timelineid); //find(timelineid);
+        while(timelineidItr != timelineidIdx.end()){
+            if(timelineidItr->account == account && timelineidItr->timelineid == timelineid){
+                hasLiked = true;
+                pkey = timelineidItr->pkey;
+                break;
+            }
+
+            if(timelineidItr->timelineid > timelineid)
+                break;
+
+            timelineidItr++;
+        }
+
+        if(hasLiked){
+            //Remove user's like from blockchain
+            auto iterator = timelinelike.find(pkey);
+            eosio_assert(iterator != timelinelike.end(), "Like does not exist");
+            timelinelike.erase(iterator);
+        }
+        else{
+            //Add like
+            timelinelike.emplace(_self, [&]( auto& row ) { 
+                row.pkey = timelinelike.available_primary_key();
+                row.account = account;
+                row.timelineid = timelineid;
+                row.timestamp = now();
+            });
+        }
+    }
+
+    [[eosio::action]]
+    void eraselike(name account, uint32_t timelineid) {
+        require_auth(account);
+
+        timelinelike_index timelinelike(_code, _code.value);
+
+        uint64_t pkey = 0;
+        auto timelineidIdx = timelinelike.get_index<name("timelineid")>();
+        auto timelineidItr = timelineidIdx.lower_bound(timelineid); // find(timelineid);
+        while(timelineidItr != timelineidIdx.end()){
+            if(timelineidItr->account == account && timelineidItr->timelineid == timelineid){
+                pkey = timelineidItr->pkey;
+                break;
+            }
+
+            if(timelineidItr->timelineid > timelineid)
+                break;
+
+            timelineidItr++;
+        }
+
+        eosio_assert(pkey > 0, "Like id not found.");
+
+        if(pkey > 0){
+            auto iterator = timelinelike.find(pkey);
+            eosio_assert(iterator != timelinelike.end(), "Like does not exist");
+            timelinelike.erase(iterator);
+        }
+        
+    }
+
+    [[eosio::action]]
     void addsetting(name keyname, std::string stringvalue, asset assetvalue, uint32_t uintvalue) 
     {
         require_auth("cptblackbill"_n);
@@ -1150,46 +1317,7 @@ public:
         eosio_assert(iterator != settings.end(), "Setting does not exist");
         settings.erase(iterator);
     }
-
-    /*
-    [[eosio::action]]
-    void erasecheck(uint64_t pkey) {
-        require_auth("cptblackbill"_n);
-        
-        verifycheck_index verifycheck(_code, _code.value);
-        auto iterator = verifycheck.find(pkey);
-        eosio_assert(iterator != verifycheck.end(), "Verify check value record does not exist");
-        verifycheck.erase(iterator);
-    } */
-
-    //This is used to add a verified unlock for sponsored treasures where no EOS payment is needed
-    /*[[eosio::action]]
-    void addverunlc(uint64_t treasurepkey, name byaccount, std::string secretcode) {
-        require_auth("cptblackbill"_n);
-        
-        //Add row to verifyunlock
-        verifyunlock_index verifyunlock(_self, _self.value);
-        verifyunlock.emplace(_self, [&]( auto& row ) {
-            row.pkey = verifyunlock.available_primary_key();
-            row.treasurepkey = treasurepkey;
-            row.secretcode = secretcode;
-            row.byaccount = byaccount;
-            row.addtochestamount = eosio::asset(0, symbol(symbol_code("EOS"), 4));
-            row.timestamp = now();
-        });
-    }*/
-
-    /*
-    [[eosio::action]]
-    void eraseverunlc(uint64_t pkey) {
-        require_auth("cptblackbill"_n);
-        
-        verifyunlock_index verifyunlock(_code, _code.value);
-        auto iterator = verifyunlock.find(pkey);
-        eosio_assert(iterator != verifyunlock.end(), "Verify unlock record does not exist");
-        verifyunlock.erase(iterator);
-    }*/
-
+    
     [[eosio::action]]
     void eraseresult(uint64_t pkey) {
         require_auth("cptblackbill"_n);
@@ -1408,31 +1536,6 @@ private:
     };
     typedef eosio::multi_index<"payouttokenh"_n, payouttokenh> payouttokenh_index;
 
-    /*
-    struct [[eosio::table]] verifycheck {
-        uint64_t pkey;
-        uint64_t treasurepkey;
-        eosio::name byaccount;
-        eosio::asset addtochestamount;
-        int32_t timestamp;
-
-        uint64_t primary_key() const { return  pkey; }
-    };
-    typedef eosio::multi_index<"verifycheck"_n, verifycheck> verifycheck_index;
-
-    struct [[eosio::table]] verifyunlock {
-        uint64_t pkey;
-        uint64_t treasurepkey;
-        eosio::name byaccount;
-        eosio::asset addtochestamount;
-        std::string secretcode;
-        int32_t timestamp;
-
-        uint64_t primary_key() const { return  pkey; }
-    };
-    typedef eosio::multi_index<"verifyunlock"_n, verifyunlock> verifyunlock_index;
-    */
-
     struct [[eosio::table]] settings {
         eosio::name keyname; 
         std::string stringvalue;
@@ -1466,6 +1569,38 @@ private:
             eosio::indexed_by<"creator"_n, const_mem_fun<results, uint64_t, &results::by_creator>>, 
             eosio::indexed_by<"treasurepkey"_n, const_mem_fun<results, uint64_t, &results::by_treasurepkey>>> results_index;
 
+    struct [[eosio::table]] resultsmnth {
+        uint64_t pkey;
+        eosio::name fpAccount;
+        int32_t fpPoints; 
+        eosio::asset fpEos;
+        eosio::name spAccount;
+        int32_t spPoints; 
+        eosio::asset spEos;
+        eosio::name tpAccount;
+        int32_t tpPoints; 
+        eosio::asset tpEos;
+        eosio::asset eosusdprice;
+        int32_t timestamp; 
+        
+        uint64_t primary_key() const { return  pkey; }
+    };
+    typedef eosio::multi_index<"resultsmnth"_n, resultsmnth> resultsmnth_index;
+        
+    struct [[eosio::table]] timelinelike {
+        uint64_t pkey;
+        eosio::name account;
+        uint64_t timelineid;
+        int32_t timestamp; //Date created 
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_account() const {return account.value; } //second key, can be non-unique
+        uint64_t by_timelineid() const {return timelineid; } //third key, can be non-unique
+    };
+    typedef eosio::multi_index<"timelinelike"_n, timelinelike, 
+            eosio::indexed_by<"account"_n, const_mem_fun<timelinelike, uint64_t, &timelinelike::by_account>>, 
+            eosio::indexed_by<"timelineid"_n, const_mem_fun<timelinelike, uint64_t, &timelinelike::by_timelineid>>> timelinelike_index; 
+    
     //Struck to show where the lost diamond has been located earlier
     struct [[eosio::table]] dimndhistory {
         uint64_t pkey;
@@ -1620,6 +1755,12 @@ extern "C" {
     else if(code==receiver && action==name("addtradmin").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addtradmin );
     }
+    else if(code==receiver && action==name("addlike").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::addlike );
+    }
+    else if(code==receiver && action==name("eraselike").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::eraselike );
+    }
     else if(code==receiver && action==name("modtreasure").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modtreasure );
     }
@@ -1640,6 +1781,9 @@ extern "C" {
     }
     else if(code==receiver && action==name("updranking").value) {
       execute_action(name(receiver), name(code), &cptblackbill::updranking );
+    }
+    else if(code==receiver && action==name("awardpayout").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::awardpayout );
     }
     else if(code==receiver && action==name("modexpdate").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modexpdate );

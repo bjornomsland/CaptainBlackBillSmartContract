@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Mar 13 16:10:47 2020",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Apr  1 00:55:44 2020",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -49,6 +49,20 @@
                 {
                     "name": "toTimestamp",
                     "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "addlike",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "timelineid",
+                    "type": "uint32"
                 }
             ]
         },
@@ -185,6 +199,40 @@
                 {
                     "name": "longitude",
                     "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "awardpayout",
+            "base": "",
+            "fields": [
+                {
+                    "name": "yyyymm",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fpAccount",
+                    "type": "name"
+                },
+                {
+                    "name": "fpPoints",
+                    "type": "uint32"
+                },
+                {
+                    "name": "spAccount",
+                    "type": "name"
+                },
+                {
+                    "name": "spPoints",
+                    "type": "uint32"
+                },
+                {
+                    "name": "tpAccount",
+                    "type": "name"
+                },
+                {
+                    "name": "tpPoints",
+                    "type": "uint32"
                 }
             ]
         },
@@ -369,6 +417,20 @@
                 {
                     "name": "user",
                     "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "eraselike",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "timelineid",
+                    "type": "uint32"
                 }
             ]
         },
@@ -698,6 +760,60 @@
             ]
         },
         {
+            "name": "resultsmnth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fpAccount",
+                    "type": "name"
+                },
+                {
+                    "name": "fpPoints",
+                    "type": "int32"
+                },
+                {
+                    "name": "fpEos",
+                    "type": "asset"
+                },
+                {
+                    "name": "spAccount",
+                    "type": "name"
+                },
+                {
+                    "name": "spPoints",
+                    "type": "int32"
+                },
+                {
+                    "name": "spEos",
+                    "type": "asset"
+                },
+                {
+                    "name": "tpAccount",
+                    "type": "name"
+                },
+                {
+                    "name": "tpPoints",
+                    "type": "int32"
+                },
+                {
+                    "name": "tpEos",
+                    "type": "asset"
+                },
+                {
+                    "name": "eosusdprice",
+                    "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
             "name": "settings",
             "base": "",
             "fields": [
@@ -796,6 +912,28 @@
                 {
                     "name": "earnedpayout",
                     "type": "asset"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
+            "name": "timelinelike",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "timelineid",
+                    "type": "uint64"
                 },
                 {
                     "name": "timestamp",
@@ -971,6 +1109,11 @@
             "ricardian_contract": ""
         },
         {
+            "name": "addlike",
+            "type": "addlike",
+            "ricardian_contract": ""
+        },
+        {
             "name": "addsetting",
             "type": "addsetting",
             "ricardian_contract": ""
@@ -991,6 +1134,11 @@
             "ricardian_contract": ""
         },
         {
+            "name": "awardpayout",
+            "type": "awardpayout",
+            "ricardian_contract": ""
+        },
+        {
             "name": "btulla",
             "type": "btulla",
             "ricardian_contract": ""
@@ -1003,6 +1151,11 @@
         {
             "name": "erasecrew",
             "type": "erasecrew",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "eraselike",
+            "type": "eraselike",
             "ricardian_contract": ""
         },
         {
@@ -1164,6 +1317,13 @@
             "key_types": []
         },
         {
+            "name": "resultsmnth",
+            "type": "resultsmnth",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
             "name": "settings",
             "type": "settings",
             "index_type": "i64",
@@ -1187,6 +1347,13 @@
         {
             "name": "tcrfund",
             "type": "tcrfund",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "timelinelike",
+            "type": "timelinelike",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
