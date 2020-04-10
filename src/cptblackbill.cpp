@@ -157,8 +157,6 @@ public:
         else if (memo.rfind("Unlock Treasure No.", 0) == 0) {
             //from account pays to unlock a treasure
 
-            eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum price for unlocking a treasure.");
-            
             //Get treasurepkey and secret code from memo
             uint64_t treasurepkey = std::strtoull( memo.substr(19).c_str(),NULL,0 ); //Find treasure pkey from transfer memo
             
@@ -166,48 +164,53 @@ public:
             auto iterator = treasures.find(treasurepkey);
             eosio_assert(iterator != treasures.end(), "Treasure not found.");
             eosio_assert(iterator->status == "active", "Treasure is not active.");
-            
-            //Owner of the treasure can only unlock a treasure if it's conquered by someone else. And if conquered, the
-            //user that has conquered can not unlock as long as that account is registered as conquered.
-            if(is_account( iterator->conqueredby))
-                eosio_assert(iterator->conqueredby != from, "You are not allowed to unlock a treasure you have conquered.");
-            else
-                eosio_assert(iterator->owner != from, "You are not allowed to unlock your own treasure.");
 
-            //Take percent of the transfered EOS as provision to the lost diamond owners and diamond value
-            eosio::asset totcrfund = (eos * (25 * 100)) / 10000;
-            eosio::asset toLostDiamondValueByCptBlackBill = (eos * (20 * 100)) / 10000;
+            if (from != name{"cptbbfinanc1"}) //2020-04-10 Normal payment for unlocking treasure (cptbbfinanc1 is used for free unlockings when user has no money in account)
+            {
+                eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum price for unlocking a treasure.");
+                
+                //Owner of the treasure can only unlock a treasure if it's conquered by someone else. And if conquered, the
+                //user that has conquered can not unlock as long as that account is registered as conquered.
+                if(is_account( iterator->conqueredby))
+                    eosio_assert(iterator->conqueredby != from, "You are not allowed to unlock a treasure you have conquered.");
+                else
+                    eosio_assert(iterator->owner != from, "You are not allowed to unlock your own treasure.");
 
-            //Add 20 percent to the value of the Lost Diamond (account cptblackbill is used for this)
-            diamondownrs_index diamondownrs(_self, _self.value);
-            auto account_index = diamondownrs.get_index<name("account")>();
-            auto diamondownrsItr = account_index.find(to.value);
-            if(diamondownrsItr == account_index.end()){
-                diamondownrs.emplace(_self, [&]( auto& row ) {
-                    row.pkey = diamondownrs.available_primary_key();
-                    row.account = to;
-                    row.investedamount = toLostDiamondValueByCptBlackBill;
-                    row.investedpercent = 0; //Null by default. Will be recalculated later
-                    row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
-                    row.timestamp = now();
+                //Take percent of the transfered EOS as provision to the lost diamond owners and diamond value
+                eosio::asset totcrfund = (eos * (25 * 100)) / 10000;
+                eosio::asset toLostDiamondValueByCptBlackBill = (eos * (20 * 100)) / 10000;
+
+                //Add 20 percent to the value of the Lost Diamond (account cptblackbill is used for this)
+                diamondownrs_index diamondownrs(_self, _self.value);
+                auto account_index = diamondownrs.get_index<name("account")>();
+                auto diamondownrsItr = account_index.find(to.value);
+                if(diamondownrsItr == account_index.end()){
+                    diamondownrs.emplace(_self, [&]( auto& row ) {
+                        row.pkey = diamondownrs.available_primary_key();
+                        row.account = to;
+                        row.investedamount = toLostDiamondValueByCptBlackBill;
+                        row.investedpercent = 0; //Null by default. Will be recalculated later
+                        row.earnedpayout = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                        row.timestamp = now();
+                    });
+                }
+                else{
+                    account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
+                        row.investedamount += toLostDiamondValueByCptBlackBill;
+                    });            
+                }
+
+                //2020-02-24 Add to diamond fund
+                eosio::asset toTokenHolders = (eos * (5 * 100)) / 10000;
+                diamondfund_index diamondfund(_self, _self.value);
+                auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+                auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+                diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                    row.toDiamondOwners += totcrfund;
+                    row.toTokenHolders += toTokenHolders;
+                    row.diamondValue += toLostDiamondValueByCptBlackBill;
                 });
             }
-            else{
-                account_index.modify(diamondownrsItr, _self, [&]( auto& row ) {
-                    row.investedamount += toLostDiamondValueByCptBlackBill;
-                });            
-            }
-
-            //2020-02-24 Add to diamond fund
-            eosio::asset toTokenHolders = (eos * (5 * 100)) / 10000;
-            diamondfund_index diamondfund(_self, _self.value);
-            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
-            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
-            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
-                row.toDiamondOwners += totcrfund;
-                row.toTokenHolders += toTokenHolders;
-                row.diamondValue += toLostDiamondValueByCptBlackBill;
-            });  
         }
         else if (memo.rfind("Activate SponsorItem No.", 0) == 0) {
             uint64_t sponsorItemPkey = std::strtoull( memo.substr(24).c_str(),NULL,0 ); //Find treasure pkey from transfer memo
@@ -573,7 +576,7 @@ public:
     }
 
     [[eosio::action]]
-    void unlockchest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, uint64_t sponsoritempkey) {
+    void unlockchest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, uint64_t sponsoritempkey, bool isNoPaymentRobbery) {
         require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
 
         //Get total amount in Lost Diamond if diamond is found in this treasure
@@ -617,7 +620,36 @@ public:
                 row.conqueredby = byuser; //The treasure has been conquered by the robber. The robber has now access to activate the treasure with a new code.
             else
                 row.conqueredby = ""_n; //Set as blank if owner has conquered back the treasure.
+
             
+            //Reward finder for using CptBlackBill. 10000 = 1 BLKBILL
+            cptblackbill::issue(byuser, eosio::asset(10, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for unlocking treasure.") );
+            //send_summary(byuser, "1 BLKBILL token as reward for unlocking a treasure.");
+
+            //Reward creator for creating content 
+            cptblackbill::issue(treasureowner, eosio::asset(1, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for someone unlocking your treasure.") );
+            //send_summary(treasureowner, "2 BLKBILL token as reward for someone unlocking your treasure.");
+            
+            //Update 2018-12-28 Add user who unlocked tresure to the result table for easy access on scoreboard in dapp
+            results_index results(_code, _code.value);
+            results.emplace(_self, [&]( auto& row ) { 
+                row.pkey = results.available_primary_key();
+                row.user = byuser; //The eos account that found and unlocked the treasure
+                row.creator = treasureowner; //The eos account that created or owns the treasure
+                row.conqueredby = treasureConquerer; //The eos account that has conquered the treasure and share 50/50 with owner
+                row.treasurepkey = treasurepkey;
+                row.lostdiamondfound = lostdiamondisfound;
+                row.payouteos = payouteos;
+
+                if(isNoPaymentRobbery == true)
+                    row.eosusdprice = eosio::asset(0, symbol(symbol_code("USD"), 4)); //2020-04-10 Zero to mark that this is a no payment robbery
+                else
+                    row.eosusdprice = getEosUsdPrice(); //2019-01-08
+                
+                row.minedblkbills = eosio::asset(10, symbol(symbol_code("BLKBILL"), 4));
+                row.timestamp = now();
+            });
+
             if(payouteos.amount > 0) 
             {
                 //Treasure has been unlocked by <byuser>. 
@@ -670,29 +702,6 @@ public:
                         std::make_tuple(get_self(), treasureowner, payouteos, std::string("Congrats! Your Treasure No." + std::to_string(treasurepkey) + " has been solved. This is your equal share of the treasure chest."))
                     ).send();
                 }                
-
-                //Reward finder for using CptBlackBill. 10000 = 1 BLKBILL
-                cptblackbill::issue(byuser, eosio::asset(10, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for unlocking treasure.") );
-                //send_summary(byuser, "1 BLKBILL token as reward for unlocking a treasure.");
-
-                //Reward creator for creating content 
-                cptblackbill::issue(treasureowner, eosio::asset(20, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for someone unlocking your treasure.") );
-                //send_summary(treasureowner, "2 BLKBILL token as reward for someone unlocking your treasure.");
-                
-                //Update 2018-12-28 Add user who unlocked tresure to the result table for easy access on scoreboard in dapp
-                results_index results(_code, _code.value);
-                results.emplace(_self, [&]( auto& row ) { 
-                    row.pkey = results.available_primary_key();
-                    row.user = byuser; //The eos account that found and unlocked the treasure
-                    row.creator = treasureowner; //The eos account that created or owns the treasure
-                    row.conqueredby = treasureConquerer; //The eos account that has conquered the treasure and share 50/50 with owner
-                    row.treasurepkey = treasurepkey;
-                    row.lostdiamondfound = lostdiamondisfound;
-                    row.payouteos = payouteos;
-                    row.eosusdprice = getEosUsdPrice(); //2019-01-08
-                    row.minedblkbills = eosio::asset(30, symbol(symbol_code("BLKBILL"), 4));
-                    row.timestamp = now();
-                });
 
                 if(lostdiamondisfound){
                     
@@ -752,9 +761,9 @@ public:
         eosio_assert(diamondFundIterator->foundTimestamp == 0, "Diamond is already found. No prize available.");
     
         //Get award amount for first, second and third place
-        double firstPlaceAward = (diamondValue.amount * 5) / 100; //5 percent (is actually 10percent of the diamond value)
-        double secondPlaceAward = (diamondValue.amount * 3) / 100; //3 percent
-        double thirdPlaceAward = (diamondValue.amount * 2) / 100; //1 percent
+        double firstPlaceAward = (diamondValue.amount * 2.5) / 100; //2.5 percent (is actually 5 percent of the diamond value)
+        double secondPlaceAward = (diamondValue.amount * 1.5) / 100; //1.5 percent (3 percent)
+        double thirdPlaceAward = (diamondValue.amount * 1) / 100; //1 percent (2 percent)
         double totalAwardInEos = firstPlaceAward + secondPlaceAward + thirdPlaceAward;
 
         uint64_t intFirstPlaceaward = firstPlaceAward;
