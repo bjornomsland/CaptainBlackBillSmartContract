@@ -1398,6 +1398,22 @@ public:
             row.fromTimestamp = fromTimestamp;
             row.toTimestamp = toTimestamp;
         });
+        
+        //Remove 2% of the diamond value. That amount is added to a random treasure in the RelocateTheLostDiamond function
+        diamondfund_index diamondfund(_self, _self.value);
+        auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+        asset diamondValue = diamondFundIterator->diamondValue;
+        
+        double dblToRandomTreasure = (diamondValue.amount * 1.0) / 100; //1.0 percent (is actually 2 percent of the diamond value)
+        uint64_t intToRandomTreasure = dblToRandomTreasure;
+        uint64_t intRemainingDiamondValue = diamondValue.amount - intToRandomTreasure; 
+
+        //Update new amount for diamond value
+        asset eosRemainingDiamondValue = eosio::asset(intRemainingDiamondValue, symbol(symbol_code("EOS"), 4));
+        diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+            row.diamondValue = eosRemainingDiamondValue;
+        });
     }
 
     [[eosio::action]]
