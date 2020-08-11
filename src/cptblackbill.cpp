@@ -63,6 +63,23 @@ public:
 
         sub_balance( from, quantity );
         add_balance( to, quantity, payer );
+
+        //2020-05-16 If sent to cptblackbill then add quantity to sell order on exchngtokens (selling BLKBILL tokens)
+        if (to == name{"cptblackbill"} && quantity.symbol == symbol(symbol_code("BLKBILL"), 4))
+        {
+            exchngtokens_index exchngtokens(_self, _self.value);
+            uint64_t itemPriceInDollar = std::strtoull(memo.c_str(), NULL, 0);
+            itemPriceInDollar = itemPriceInDollar * 100; //memo is sell amount in cent 
+
+            exchngtokens.emplace(_self, [&]( auto& row ) {
+                row.pkey = exchngtokens.available_primary_key();
+                row.account = from;
+                row.sell = quantity; 
+                row.itemprice = eosio::asset(itemPriceInDollar, symbol(symbol_code("USD"), 4));
+                row.timestamp = now();
+            });
+        }
+        //----------------------
     }
 
     static asset get_balance(name token_contract_account, name owner, symbol_code sym_code) {
@@ -262,6 +279,178 @@ public:
             sponsoritems.modify(iterator, _self, [&]( auto& row ) {
                 row.status = "active";
             }); 
+        }
+        else if (memo.rfind("AddAdventureRace:", 0) == 0) { //2020-08-11
+            
+            //Check that amount is above minimum fee for adding a new adventure race
+            eosio_assert(eos >= getPriceForCheckTreasureValueInEOS() * 2, "Transfered amount is below minimum price for creating a new adventure race.");
+            
+            std::string raceTitle = memo.substr(17).c_str(); //Get race title    
+            
+            race_index race(_self, _self.value);
+            race.emplace(_self, [&]( auto& row ) {
+                row.pkey = race.available_primary_key();
+                row.raceowner = from;
+                row.title = raceTitle;
+                row.entryfeeusd = eosio::asset(0, symbol(symbol_code("USD"), 4));
+                row.timestamp = now();
+            });
+
+            //Divide fee for adding new adventure race to token holders and diamond value
+            eosio::asset toTokenHolders = (eos * (50 * 100)) / 10000; //50 percent to BLKBILL token holders
+            eosio::asset toDiamondValue = (eos * (50 * 100)) / 10000; //50 percent to diamond value
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                row.toTokenHolders += toTokenHolders; //50%
+                row.diamondValue += toDiamondValue; //50%
+            });
+
+        }
+        else if (memo.rfind("RacePayment:", 0) == 0) { //2020-08-11
+            
+            uint64_t racePkey = std::strtoull( memo.substr(12).c_str(),NULL,0 ); //Find race pkey for payment
+            asset eosusd = getEosUsdPrice();
+            double dblEosUsdPrice = eosusd.amount;
+
+            racepayments_index racepayments(_self, _self.value);
+            racepayments.emplace(_self, [&]( auto& row ) {
+                row.pkey = racepayments.available_primary_key();
+                row.racepkey = racePkey;
+                row.teamaccount = from; //The account who sent money
+                row.entryfee = eos;
+                row.feereleased = 0; //Payed, but not sent to race owner (until race is proven to take place with solved checkpoints).
+                row.eosusdprice = eosusd;
+                row.timestamp = now();
+            });
+
+            //Add to diamond fund - TODO: Move this code to where checkpoints are solved.
+            //eosio::asset toTokenHolders = (eos * (10 * 100)) / 10000; //10 percent to BLKBILL token holders
+            //eosio::asset toDiamondValue = (eos * (10 * 100)) / 10000; //10 percent to diamond value
+            //eosio::asset toRaceOwner = (eos * (80 * 100)) / 10000; //80 percent to race owner
+            //diamondfund_index diamondfund(_self, _self.value);
+            //auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            //auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            //diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+            //    row.toTokenHolders += toTokenHolders; //10%
+            //    row.diamondValue += toDiamondValue; //10%
+            //});
+
+            //TODO Transfer 80% of race fee to race owner  
+
+            
+        }
+        else if (memo.rfind("BuyBLKBILLTokens:", 0) == 0) { //2020-05-16
+            
+            asset eosusd = getEosUsdPrice();
+            double dblEosUsdPrice = eosusd.amount;
+            uint64_t promisedQuantityToBuy = std::strtoull( memo.substr(17).c_str(),NULL,0 ); //The amount of tokens promised to be bought for the amount sent
+            uint64_t quantityReached = 0;
+            uint64_t usdBuyAmount = eosusd.amount * eos.amount;
+            uint64_t usdBuyAmountReached = 0; //Abort if this amount is above the eos-amount sent. The buyer don't get the number of tokens promised for the agreed price
+            
+            exchngtokens_index exchngtokens(_self, _self.value);
+            auto exchngtokensItems = exchngtokens.get_index<"itemprice"_n>();
+            auto iter = exchngtokensItems.lower_bound(0);
+            while (iter != exchngtokensItems.end()) {
+                
+                uint64_t totalUsdValueInThisSellOrder = iter->sell.amount * iter->itemprice.amount;
+                
+                if(usdBuyAmountReached >= usdBuyAmount){
+                    break; //We have reached the buy amount for a promised quantity of BLKBILL tokens    
+                }
+                else if(totalUsdValueInThisSellOrder <= (usdBuyAmount - usdBuyAmountReached)){
+                    //All tokens in this sell order can be sold to cover the promised quantity
+                    quantityReached += iter->sell.amount;
+                    usdBuyAmountReached += totalUsdValueInThisSellOrder;
+                    
+                    double dblSellAmount = iter->sell.amount;
+                    double dblItemPrice = iter->itemprice.amount;
+                    double dblVisibleItemPrice = dblItemPrice / 10000;
+                    double dblNumberOfTokensSold = dblSellAmount / 10000;
+                    double dblTotalSellPriceInEos = (dblSellAmount * dblItemPrice) / dblEosUsdPrice;
+                    uint64_t totalSellPriceInEos = dblTotalSellPriceInEos;
+
+                    //std::to_string(dblNumberOfTokensSold).substr(0, std::to_string(dblNumberOfTokensSold).find(".") + 5);
+                    //std::to_string(dblNumberOfTokensSold)
+
+                    //Send payment in EOS-tokens to seller 
+                    action(
+                        permission_level{ get_self(), "active"_n },
+                        "eosio.token"_n, "transfer"_n,
+                        std::make_tuple(get_self(), iter->account, 
+                                        eosio::asset(totalSellPriceInEos, symbol(symbol_code("EOS"), 4)), 
+                                        std::string("Payment for selling " + std::to_string(dblNumberOfTokensSold).substr(0, std::to_string(dblNumberOfTokensSold).find(".") + 5) + " BLKBILL tokens. Token price: USD " + std::to_string(dblVisibleItemPrice).substr(0, std::to_string(dblVisibleItemPrice).find(".") + 5)))
+                    ).send();
+
+                    iter = exchngtokensItems.erase(iter); //This sell order can be erased
+
+                }
+                else if(totalUsdValueInThisSellOrder > (usdBuyAmount - usdBuyAmountReached))
+                {
+                    //This sell order has more value than needed to cover the promised quantity
+                    double usdValueOfTokensFromThisOrderNeeded = usdBuyAmount - usdBuyAmountReached;
+                    double dblItemPriceAmount = iter->itemprice.amount;
+                    double dblNumberOfTokensFromThisOrderNeeded = usdValueOfTokensFromThisOrderNeeded / dblItemPriceAmount;
+                    uint64_t quantityNeededFromSellOrder = dblNumberOfTokensFromThisOrderNeeded; //-5
+                    uint64_t restQuantityInSellOrder = iter->sell.amount - quantityNeededFromSellOrder;
+                    quantityReached += quantityNeededFromSellOrder;
+
+                    usdBuyAmountReached += (iter->itemprice.amount * quantityNeededFromSellOrder);
+                    
+                    double dblNumberOfTokensSold = dblNumberOfTokensFromThisOrderNeeded / 10000;
+                    double dblItemPrice = iter->itemprice.amount;
+                    double dblVisibleItemPrice = dblItemPrice / 10000;
+                    double dblTotalSellPriceInEos = (dblNumberOfTokensSold * dblItemPrice) / dblEosUsdPrice;
+                    uint64_t totalSellPriceInEos = dblTotalSellPriceInEos * 10000;
+
+                    exchngtokensItems.modify(iter, _self, [&]( auto& row ) {
+                        row.sell = eosio::asset(restQuantityInSellOrder, symbol(symbol_code("BLKBILL"), 4));
+                    });
+
+                    //Send payment in EOS-tokens to seller 
+                    action(
+                        permission_level{ get_self(), "active"_n },
+                        "eosio.token"_n, "transfer"_n,
+                        std::make_tuple(get_self(), iter->account, 
+                                        eosio::asset(totalSellPriceInEos, symbol(symbol_code("EOS"), 4)), 
+                                        std::string("Payment for selling " + std::to_string(dblNumberOfTokensSold).substr(0, std::to_string(dblNumberOfTokensSold).find(".") + 5) + " BLKBILL tokens.. Token price: USD " + std::to_string(dblVisibleItemPrice).substr(0, std::to_string(dblVisibleItemPrice).find(".") + 5)))
+                    ).send();
+
+                    break; 
+                } 
+            } 
+
+            eosio_assert(quantityReached > 0, "No tokens available.");
+            eosio_assert(quantityReached >= (promisedQuantityToBuy * 10000), "Promised token quantity is no longer available.");
+            eosio_assert(usdBuyAmountReached <= usdBuyAmount, "Promised token quantity for agreed price is no longer available. Please refresh and try again.");
+
+            //double dblAvgPricePrToken = usdBuyAmountReached / (quantityReached * 10000);
+            uint64_t avgPricePrToken = usdBuyAmountReached / quantityReached; //dblAvgPricePrToken; //usdBuyAmountReached / (quantityReached / 10000);
+            double dblAvgPricePrToken = avgPricePrToken;
+            double dblVisibleAvgPricePrToken = dblAvgPricePrToken / 10000;
+
+            //Transfer BLKBILL quantity to buyer
+            action(
+                permission_level{ get_self(), "active"_n },
+                "cptblackbill"_n, "transfer"_n,
+                std::make_tuple(get_self(), 
+                                from,  
+                                eosio::asset(quantityReached, symbol(symbol_code("BLKBILL"), 4)), 
+                                std::string("Buying BLKBILL tokens on Cpt.BlackBill exchange for USD " + std::to_string(dblVisibleAvgPricePrToken).substr(0, std::to_string(dblVisibleAvgPricePrToken).find(".") + 5) + " per token."))
+            ).send();
+
+            exchngbuylog_index exchngbuylog(_self, _self.value);
+            exchngbuylog.emplace(_self, [&]( auto& row ) {
+                row.pkey = exchngbuylog.available_primary_key();
+                row.toaccount = from; //The account who sent money receives the tokens
+                row.tokens = eosio::asset(quantityReached, symbol(symbol_code("BLKBILL"), 4));
+                row.itemprice = eosio::asset(avgPricePrToken, symbol(symbol_code("USD"), 4));
+                row.eosprice = getPriceInUSD(eosio::asset(10000, symbol(symbol_code("EOS"), 4))); //Usd price for 1 EOS
+                row.timestamp = now();
+            });
+            
         }
         else{
             
@@ -743,6 +932,34 @@ public:
         });
     }
 
+    //2020-06-29: For adding race result (members cup and public events) to the result table (to show up on the leaderboard).
+    [[eosio::action]]
+    void addresult(name raceparticipant, name raceowner, uint32_t totalpoints, uint32_t endracetimestamp) {
+        require_auth("cptblackbill"_n);
+    
+        eosio_assert(totalpoints > 0, "Total points must be larger than 0");
+
+        //Reward race participant. Points = BLKBILLs / 10000. 
+        cptblackbill::issue(raceparticipant, eosio::asset(totalpoints, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for racing.") );
+        
+        //Reward race owner with the same amount as race participant 
+        cptblackbill::issue(raceowner, eosio::asset(totalpoints, symbol(symbol_code("BLKBILL"), 4)), std::string("Reward for hosting race event.") );
+            
+        //Add participant to result table. Points == mined black bills
+        results_index results(_code, _code.value);
+        results.emplace(_self, [&]( auto& row ) { 
+            row.pkey = results.available_primary_key();
+            row.user = raceparticipant; //The eos account that found and unlocked the treasure
+            row.creator = raceowner; //The eos account that created or owns the treasure
+            row.treasurepkey = 21; //Race event treasure (pkey=21 does not exists as treasure)
+            row.lostdiamondfound = 0;
+            row.payouteos = eosio::asset(0, symbol(symbol_code("EOS"), 4));;
+            row.eosusdprice = eosio::asset(0, symbol(symbol_code("USD"), 4)); //2020-04-10 Zero to mark that this is a no payment robbery (in this case racing event)
+            row.minedblkbills = eosio::asset(totalpoints, symbol(symbol_code("BLKBILL"), 4));
+            row.timestamp = endracetimestamp;
+        });
+    }
+
     [[eosio::action]]
     void awardpayout(uint64_t yyyymm, name fpAccount, uint32_t fpPoints, name spAccount, uint32_t spPoints, name tpAccount, uint32_t tpPoints) {
         require_auth("cptblackbill"_n);
@@ -831,6 +1048,21 @@ public:
     [[eosio::action]]
     void btulla(name byuser, uint64_t fromPkey, asset testeos, uint64_t toPkey) {
         require_auth("cptblackbill"_n);
+
+        
+        //Remove exchngbuylog rows
+        //exchngbuylog_index exchngbuylog(_self, _self.value);
+        //auto buylogItr = exchngbuylog.begin();
+        //while(buylogItr != exchngbuylog.end()) {
+        //    buylogItr = exchngbuylog.erase(buylogItr);
+        //} 
+
+        //Remove exchngtokens rows
+        //exchngtokens_index exchngtokens(_self, _self.value);
+        //auto exchngtokensItr = exchngtokens.begin();
+        //while(exchngtokensItr != exchngtokens.end()) {
+        //    exchngtokensItr = exchngtokens.erase(exchngtokensItr);
+        //} 
 
         /*
         resultsmnth_index resultsmnth(_code, _code.value);
@@ -1213,6 +1445,33 @@ public:
     }
 
     [[eosio::action]]
+    void erasesellord(name user, uint64_t pkey) {
+        require_auth(user);
+        
+        exchngtokens_index exchngtokens(_code, _code.value);
+        
+        auto iterator = exchngtokens.find(pkey);
+        eosio_assert(iterator != exchngtokens.end(), "Sell order does not exist.");
+        eosio_assert(user == iterator->account, "You don't have access to cancel this sell order.");
+        eosio_assert(iterator->sell.symbol == symbol(symbol_code("BLKBILL"), 4), "Only sell orders for BLKBILL tokens can be cancelled.");
+        eosio_assert(iterator->sell.amount >= 0, "Only sell orders with real quantity can be cancelled.");
+
+        //Transfer BLKBILL tokens back to account
+            action(
+                permission_level{ get_self(), "active"_n },
+                "cptblackbill"_n, "transfer"_n,
+                std::make_tuple(get_self(), 
+                                iterator->account,  
+                                iterator->sell, 
+                                std::string("Returned BLKBILL tokens from cancelled sell order."))
+            ).send();
+
+        //iterator->sell
+        
+        exchngtokens.erase(iterator);
+    }
+
+    [[eosio::action]]
     void addlike(name account, uint32_t timelineid) 
     {
         require_auth(account);
@@ -1281,7 +1540,55 @@ public:
             eosio_assert(iterator != timelinelike.end(), "Like does not exist");
             timelinelike.erase(iterator);
         }
+    }
+
+    [[eosio::action]]
+    void addracerslt(eosio::name teamaccount, uint64_t racepkey, std::string checkpointname, uint32_t points, 
+                     double latitude, double longitude, eosio::name checkpointcreator, uint32_t totalPoints) 
+    {
+        require_auth(teamaccount);
         
+        eosio_assert(points > 0, "Must have points for storing results.");
+        
+        raceresults_index raceresults(_code, _code.value);
+        raceresults.emplace(_self, [&]( auto& row ) {
+            row.pkey = raceresults.available_primary_key();
+            row.teamaccount = teamaccount;
+            row.racepkey = racepkey;
+            row.checkpointname = checkpointname;
+            row.points = points;
+            row.totalpoints = totalPoints;
+            row.latitude = latitude;
+            row.longitude = longitude;
+            row.creator = checkpointcreator;
+            row.timestamp = now();
+        });
+    }
+
+    [[eosio::action]]
+    void clearacerslt() 
+    {
+        require_auth("cptblackbill"_n);
+        
+        //Remove race results older than 10 minutes
+        raceresults_index raceresults(_self, _self.value);
+        auto raceresultsItr = raceresults.begin();
+        while(raceresultsItr != raceresults.end()) {
+            if(raceresultsItr->timestamp < (now() - 600)){ //Timestamp i older than ten minutes
+                raceresultsItr = raceresults.erase(raceresultsItr);
+            } 
+        }
+    }
+
+    [[eosio::action]]
+    void delracersult(uint64_t raceId, eosio::name teamaccount) {
+        require_auth("cptblackbill"_n);
+        
+        raceresults_index raceresults(_self, _self.value);
+        auto itr = raceresults.begin();
+        while(itr != raceresults.end()) {
+            itr = raceresults.erase(itr);
+        } 
     }
 
     [[eosio::action]]
@@ -1345,6 +1652,22 @@ public:
         auto iterator = tcrfund.find(account.value);
         eosio_assert(iterator != tcrfund.end(), "Tcrf-account does not exist.");
         tcrfund.erase(iterator);
+    }
+
+    [[eosio::action]]
+    void modrace(eosio::name raceowner, uint64_t racepkey, std::string title, asset entryfeeusd, std::string jsonracedata) 
+    {
+        require_auth(raceowner);
+        
+        race_index race(_code, _code.value);
+        auto iterator = race.find(racepkey);
+        eosio_assert(iterator != race.end(), "Race not found");
+        
+        race.modify(iterator, _self, [&]( auto& row ) {
+            row.title = title;
+            row.entryfeeusd = entryfeeusd;
+            row.racedata = jsonracedata;
+        });
     }
 
     [[eosio::action]]
@@ -1594,6 +1917,60 @@ private:
             eosio::indexed_by<"creator"_n, const_mem_fun<results, uint64_t, &results::by_creator>>, 
             eosio::indexed_by<"treasurepkey"_n, const_mem_fun<results, uint64_t, &results::by_treasurepkey>>> results_index;
 
+    
+    struct [[eosio::table]] race {
+        uint64_t pkey;
+        eosio::name raceowner;
+        std::string title;
+        eosio::asset entryfeeusd;
+        std::string racedata;
+        int32_t timestamp; //Date created
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_raceowner() const {return raceowner.value; } //second key, can be non-unique
+    };
+    typedef eosio::multi_index<"race"_n, race, 
+            eosio::indexed_by<"raceowner"_n, const_mem_fun<race, uint64_t, &race::by_raceowner>>> race_index; 
+    
+    struct [[eosio::table]] raceresults {
+        uint64_t pkey;
+        uint64_t racepkey;
+        std::string checkpointname;
+        int32_t points;
+        int32_t totalpoints;
+        eosio::name teamaccount;
+        eosio::name creator;
+        double latitude; //GPS coordinate
+        double longitude; //GPS coordinate
+        int32_t timestamp; //Date created - queue order
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_teamaccount() const {return teamaccount.value; } //second key, can be non-unique
+        uint64_t by_creator() const {return creator.value; } //third key, can be non-unique
+        uint64_t by_racepkey() const {return racepkey; } //fourth key, can be non-unique
+    };
+    typedef eosio::multi_index<"raceresults"_n, raceresults, 
+            eosio::indexed_by<"teamaccount"_n, const_mem_fun<raceresults, uint64_t, &raceresults::by_teamaccount>>, 
+            eosio::indexed_by<"creator"_n, const_mem_fun<raceresults, uint64_t, &raceresults::by_creator>>, 
+            eosio::indexed_by<"racepkey"_n, const_mem_fun<raceresults, uint64_t, &raceresults::by_racepkey>>> raceresults_index;
+
+    struct [[eosio::table]] racepayments {
+        uint64_t pkey;
+        uint64_t racepkey;
+        eosio::name teamaccount;
+        eosio::asset entryfee;
+        bool feereleased; //0 = Entry fee is payed, but not sent to race owner. 1 = Entry fee is sent to race owner on first checkpoint solved (or if other race participants solved checkpoints)
+        eosio::asset eosusdprice;
+        int32_t timestamp; //Date created - queue order
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_teamaccount() const {return teamaccount.value; } //second key, can be non-unique
+        uint64_t by_racepkey() const {return racepkey; } //third key, can be non-unique
+    };
+    typedef eosio::multi_index<"racepayments"_n, racepayments, 
+            eosio::indexed_by<"teamaccount"_n, const_mem_fun<racepayments, uint64_t, &racepayments::by_teamaccount>>, 
+            eosio::indexed_by<"racepkey"_n, const_mem_fun<racepayments, uint64_t, &racepayments::by_racepkey>>> racepayments_index;
+
     struct [[eosio::table]] resultsmnth {
         uint64_t pkey;
         eosio::name fpAccount;
@@ -1666,6 +2043,39 @@ private:
     };
     typedef eosio::multi_index<"crewinfo"_n, crewinfo> crewinfo_index;
 
+    
+    //2020-05-16 Struck for selling tokens on CptBlackBill exchange
+    struct [[eosio::table]] exchngtokens {
+        uint64_t pkey;
+        eosio::name account;
+        eosio::asset sell;
+        eosio::asset itemprice;
+        int32_t timestamp; //Date created 
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_itemprice() const {return itemprice.amount; } //second key, can be non-unique
+        uint64_t by_account() const {return account.value; } //third key, can be non-unique
+    };
+    typedef eosio::multi_index<"exchngtokens"_n, exchngtokens, 
+            eosio::indexed_by<"itemprice"_n, const_mem_fun<exchngtokens, uint64_t, &exchngtokens::by_itemprice>>,
+            eosio::indexed_by<"account"_n, const_mem_fun<exchngtokens, uint64_t, &exchngtokens::by_account>>> exchngtokens_index; 
+
+    //2020-05-16 Struct for logging exchange buy/sell events on CptBlackBill exchange
+    struct [[eosio::table]] exchngbuylog {
+        uint64_t pkey;
+        eosio::name toaccount;
+        eosio::asset tokens;
+        eosio::asset itemprice;
+        eosio::asset eosprice;
+        int32_t timestamp; //Date created 
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_toaccount() const {return toaccount.value; } //second key, can be non-unique
+    };
+    typedef eosio::multi_index<"exchngbuylog"_n, exchngbuylog, 
+            eosio::indexed_by<"toaccount"_n, const_mem_fun<exchngbuylog, uint64_t, &exchngbuylog::by_toaccount>>> exchngbuylog_index; 
+    
+    
     /*void send_summary(name user, std::string message) {
         action(
             permission_level{get_self(),"active"_n},
@@ -1789,6 +2199,9 @@ extern "C" {
     else if(code==receiver && action==name("modtreasure").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modtreasure );
     }
+    else if(code==receiver && action==name("modrace").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::modrace );
+    }
     else if(code==receiver && action==name("modtreasimg").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modtreasimg );
     }
@@ -1821,6 +2234,21 @@ extern "C" {
     }
     else if(code==receiver && action==name("erasetreasur").value) {
       execute_action(name(receiver), name(code), &cptblackbill::erasetreasur );
+    }
+    else if(code==receiver && action==name("erasesellord").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::erasesellord );
+    }
+    else if(code==receiver && action==name("addresult").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::addresult );
+    }
+    else if(code==receiver && action==name("addracerslt").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::addracerslt );
+    }
+    else if(code==receiver && action==name("clearacerslt").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::clearacerslt );
+    }
+    else if(code==receiver && action==name("delracersult").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::delracersult );
     }
     else if(code==receiver && action==name("addsetting").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addsetting );
