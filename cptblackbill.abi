@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Aug 11 11:49:56 2020",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sun Apr 25 14:09:20 2021",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -259,6 +259,24 @@
                 {
                     "name": "longitude",
                     "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "airdrop",
+            "base": "",
+            "fields": [
+                {
+                    "name": "toaccount",
+                    "type": "name"
+                },
+                {
+                    "name": "blkbills",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
                 }
             ]
         },
@@ -1345,10 +1363,6 @@
                 {
                     "name": "sponsoritempkey",
                     "type": "uint64"
-                },
-                {
-                    "name": "isNoPaymentRobbery",
-                    "type": "bool"
                 }
             ]
         },
@@ -1430,6 +1444,11 @@
         {
             "name": "addtreasure",
             "type": "addtreasure",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "airdrop",
+            "type": "airdrop",
             "ricardian_contract": ""
         },
         {
