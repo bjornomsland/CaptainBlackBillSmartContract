@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sun Apr 25 14:09:20 2021",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sun Oct  3 23:03:40 2021",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -123,6 +123,28 @@
                 {
                     "name": "endracetimestamp",
                     "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "addsellprice",
+            "base": "",
+            "fields": [
+                {
+                    "name": "treasureowner",
+                    "type": "name"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint32"
+                },
+                {
+                    "name": "askingpriceUsd",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
                 }
             ]
         },
@@ -402,6 +424,20 @@
                 {
                     "name": "teamaccount",
                     "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "delsellprice",
+            "base": "",
+            "fields": [
+                {
+                    "name": "treasureowner",
+                    "type": "name"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint32"
                 }
             ]
         },
@@ -1341,6 +1377,40 @@
             ]
         },
         {
+            "name": "treasuresale",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "askingpriceUsd",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                },
+                {
+                    "name": "expirationdate",
+                    "type": "int32"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
             "name": "unlockchest",
             "base": "",
             "fields": [
@@ -1427,6 +1497,11 @@
             "ricardian_contract": ""
         },
         {
+            "name": "addsellprice",
+            "type": "addsellprice",
+            "ricardian_contract": ""
+        },
+        {
             "name": "addsetting",
             "type": "addsetting",
             "ricardian_contract": ""
@@ -1474,6 +1549,11 @@
         {
             "name": "delracersult",
             "type": "delracersult",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "delsellprice",
+            "type": "delsellprice",
             "ricardian_contract": ""
         },
         {
@@ -1734,6 +1814,13 @@
         {
             "name": "treasure",
             "type": "treasure",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "treasuresale",
+            "type": "treasuresale",
             "index_type": "i64",
             "key_names": [],
             "key_types": []

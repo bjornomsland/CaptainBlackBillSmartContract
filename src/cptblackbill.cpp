@@ -320,6 +320,66 @@ public:
             //This code is implemented in the function 'addracerslt'
 
         }
+        else if(memo.rfind("Buy Treasure No.",0) == 0){ //2021-10-03
+            
+            uint64_t treasurepkey = std::strtoull( memo.substr(16).c_str(),NULL,0 ); //Find treasurePkey to buy
+            
+            treasure_index treasures(_self, _self.value);
+            auto treasureIterator = treasures.find(treasurepkey);
+            eosio_assert(treasureIterator != treasures.end(), "Treasure not found..");
+            
+            treasuresale_index treasuresales(_self, _self.value);
+            auto idxTreasureSales = treasuresales.get_index<name("treasurepkey")>();
+            auto treasuresaleIterator = idxTreasureSales.find(treasurepkey); // treasuresales.find(treasurepkey);
+            eosio_assert(treasuresaleIterator != idxTreasureSales.end(), "Not for sale. Asking price for this treasure is not found.");
+            
+            eosio_assert(from != treasureIterator->owner, "You can not buy your own treasure.");
+
+            name payToTreasureOwner = treasureIterator->owner;             
+            asset sendAmountInUsd = getPriceInUSD(eos);
+            asset eosusd = getEosUsdPrice();
+            double dblAskingPriceInEOS = (treasuresaleIterator->askingpriceUsd.amount * 10000) / eosusd.amount;
+            uint64_t uintAskingPriceInEOS = (uint64_t)dblAskingPriceInEOS;   
+            asset askingPriceInEOS = eosio::asset(uintAskingPriceInEOS, symbol(symbol_code("EOS"), 4));       
+
+            double dblVisibleAskPriceInEos = ((double)askingPriceInEOS.amount / 10000) + 0.0001; //Add 0.0001 for rounding issues 
+            double dblVisibleAskPriceInUsd = (double)treasuresaleIterator->askingpriceUsd.amount / 10000; 
+            double dblVisibleSendAmountInUsd = ((double)sendAmountInUsd.amount / 10000) + 0.0001; //Add 0.0001 for rounding issues 
+            std::string assertErrorAmountToLowMsg = "Amount is to low. Asking price for this treasure is USD " + std::to_string(dblVisibleAskPriceInUsd) + " (" + std::to_string(dblVisibleAskPriceInEos) + " EOS). SendAmountInUsd: " + std::to_string(dblVisibleSendAmountInUsd);
+            eosio_assert(dblVisibleSendAmountInUsd >= dblVisibleAskPriceInUsd, assertErrorAmountToLowMsg.c_str());
+
+            //std::string debugInfo = "DEBUGTEST: sellPkey: " + std::to_string(treasuresaleIterator->pkey) + " AskPriceInEOS: " + std::to_string(dblVisibleAskPriceInEos) + " AinUSD: " + std::to_string(dblVisibleAskPriceInUsd) + " SendAmountInUsd: " + std::to_string(dblVisibleSendAmountInUsd);
+            //eosio_assert(1 == 0, debugInfo.c_str());
+
+            //Change treasure owner
+            treasures.modify(treasureIterator, _self, [&]( auto& row ) {
+                row.owner = from;
+            });
+                    
+            //Remove asking price in table treasure sales
+            idxTreasureSales.erase(treasuresaleIterator);
+
+            //Add 1% Transaction fee to the lost diamond and 1% fee to token holders
+            eosio::asset toDiamondValue = (eos * (1 * 100)) / 10000; //1 percent to diamond value
+            eosio::asset toTreasureOwnerSeller = (eos * (99 * 100)) / 10000; //98 percent to treasure seller
+            
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                row.diamondValue += toDiamondValue; //1%
+            });
+
+            //Send payment in EOS-tokens to seller 
+            action(
+                permission_level{ get_self(), "active"_n },
+                "eosio.token"_n, "transfer"_n,
+                std::make_tuple(get_self(), payToTreasureOwner, 
+                                toTreasureOwnerSeller, 
+                                std::string("Payment for selling Treasure No." + std::to_string(treasurepkey) + " (1 percent trx fee to The Lost Diamond value)" ))
+            ).send(); 
+
+        }
         else if (memo.rfind("BuyBLKBILLTokens:", 0) == 0) { //2020-05-16
             
             asset eosusd = getEosUsdPrice();
@@ -493,6 +553,8 @@ public:
             else{
                 //All other smaller amounts will initiate BLKBILL token issue
                 cptblackbill::issue(from, eosio::asset(1, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLS for using Captain Black Bill.") );
+            
+                //eosio_assert(1 == 0 , "Invalid transfer to cpt.blackbill smart contract.");
             }
 
             
@@ -542,6 +604,66 @@ public:
             row.timestamp = now();
         });
     }
+
+    //2021-10-03 For selling a treasure. The treasure owner can add a asking price for the treasure
+    [[eosio::action]]
+    void addsellprice(eosio::name treasureowner, uint32_t treasurepkey, asset askingpriceUsd, std::string memo) 
+    {
+        require_auth(treasureowner);
+        
+        treasure_index treasures(_code, _code.value);
+        auto iterator = treasures.find(treasurepkey);
+        eosio_assert(iterator != treasures.end(), "Treasure not found");
+        eosio_assert(treasureowner == iterator->owner, "You are not the owner of this treasure.");
+        eosio_assert(askingpriceUsd.symbol == symbol(symbol_code("USD"), 4), "Asking price must be in USD.");
+        eosio_assert(askingpriceUsd.amount >= 10000, "Asking price can not be less than one dollar.");
+        
+        treasuresale_index treasuresales(_code, _code.value);
+        auto idxTreasureSales = treasuresales.get_index<name("treasurepkey")>();
+        auto treasuresaleIterator = idxTreasureSales.find(treasurepkey); 
+        if(treasuresaleIterator == idxTreasureSales.end()){
+            treasuresales.emplace(treasureowner, [&]( auto& row ) {
+                row.pkey = treasuresales.available_primary_key();
+                row.account = treasureowner;
+                row.treasurepkey = treasurepkey;
+                row.askingpriceUsd = askingpriceUsd;
+                row.memo = memo;
+                row.expirationdate = now() + 31536000; //Asking price expires after one year
+                row.timestamp = now();
+            });
+        }
+        else{
+            idxTreasureSales.modify(treasuresaleIterator, _self, [&]( auto& row ) {
+                row.askingpriceUsd = askingpriceUsd;
+                row.memo = memo;
+                row.expirationdate = now() + 31536000; //Update asking price expires after one year
+            });            
+        }
+    }    
+    
+    [[eosio::action]]
+    void delsellprice(eosio::name treasureowner, uint32_t treasurepkey) 
+    {
+        require_auth(treasureowner);
+
+        treasure_index treasures(_code, _code.value);
+        auto treasureIterator = treasures.find(treasurepkey);
+        eosio_assert(treasureIterator != treasures.end(), "Treasure not found.");
+        eosio_assert(treasureowner == treasureIterator->owner, "You are not the owner of this treasure.");
+        
+        treasuresale_index treasuresales(_code, _code.value);
+        auto idxTreasureSales = treasuresales.get_index<name("treasurepkey")>();
+        //auto treasuresaleIterator = idxTreasureSales.find(treasurepkey); // treasuresales.find(treasurepkey);
+        auto treasuresaleIterator = idxTreasureSales.find(treasurepkey); // lower_bound(treasurepkey) or treasuresales.find(treasurepkey);
+        
+        eosio_assert(treasuresaleIterator != idxTreasureSales.end(), "No active sell price found. Tresure is not for sale.");
+        while(treasuresaleIterator != idxTreasureSales.end()) {
+            if(treasuresaleIterator->account == treasureowner && treasuresaleIterator->treasurepkey == treasurepkey)
+                treasuresaleIterator = idxTreasureSales.erase(treasuresaleIterator);
+            else
+                treasuresaleIterator++;    
+        }   
+    }    
 
     //2020-09-29 For airdropping blkbill tokens and awarding users 
     [[eosio::action]]        
@@ -609,8 +731,13 @@ public:
         treasures.modify(iterator, user, [&]( auto& row ) {
             row.title = title;
             row.description = description;
-            row.imageurl = imageurl;
             row.videourl = videourl;
+
+            //row.imageurl = imageurl;
+            if(user == iterator->conqueredby)
+                row.conqueredimg = imageurl;
+            else
+                row.imageurl = imageurl;
         });
     }
 
@@ -1620,13 +1747,20 @@ public:
     {
         require_auth("cptblackbill"_n);
         
-        //Remove race results older than 10 minutes
+        //Remove race results older than 24 hours
         raceresults_index raceresults(_self, _self.value);
         auto raceresultsItr = raceresults.begin();
+        uint64_t counter = 0;
         while(raceresultsItr != raceresults.end()) {
-            if(raceresultsItr->timestamp < (now() - 600)){ //Timestamp i older than ten minutes
+            if(raceresultsItr->timestamp < (now() - 86400)){ //Timestamp older than 24 hours
                 raceresultsItr = raceresults.erase(raceresultsItr);
             } 
+
+            //Prevent deadline exceeded error
+            counter++;
+            if(counter > 500){
+                break;
+            }
         }
     }
 
@@ -2053,6 +2187,25 @@ private:
             eosio::indexed_by<"account"_n, const_mem_fun<timelinelike, uint64_t, &timelinelike::by_account>>, 
             eosio::indexed_by<"timelineid"_n, const_mem_fun<timelinelike, uint64_t, &timelinelike::by_timelineid>>> timelinelike_index; 
     
+    
+    //2021-10-03
+    struct [[eosio::table]] treasuresale {
+        uint64_t pkey;
+        uint64_t treasurepkey;
+        eosio::name account;
+        eosio::asset askingpriceUsd;
+        std::string memo;
+        int32_t expirationdate; 
+        int32_t timestamp; //Date created 
+        
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_account() const {return account.value; } //second key, can be non-unique
+        uint64_t by_treasurepkey() const {return treasurepkey; } //third key, can be non-unique
+    };
+    typedef eosio::multi_index<"treasuresale"_n, treasuresale, 
+            eosio::indexed_by<"account"_n, const_mem_fun<treasuresale, uint64_t, &treasuresale::by_account>>, 
+            eosio::indexed_by<"treasurepkey"_n, const_mem_fun<treasuresale, uint64_t, &treasuresale::by_treasurepkey>>> treasuresale_index; 
+    
     //Struck to show where the lost diamond has been located earlier
     struct [[eosio::table]] dimndhistory {
         uint64_t pkey;
@@ -2239,6 +2392,12 @@ extern "C" {
     }
     else if(code==receiver && action==name("addtradmin").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addtradmin );
+    }
+    else if(code==receiver && action==name("addsellprice").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::addsellprice );
+    }
+    else if(code==receiver && action==name("delsellprice").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::delsellprice );
     }
     else if(code==receiver && action==name("airdrop").value) {
       execute_action(name(receiver), name(code), &cptblackbill::airdrop );
