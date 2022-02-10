@@ -301,17 +301,30 @@ public:
             asset eosusd = getEosUsdPrice();
             double dblEosUsdPrice = eosusd.amount;
 
-            racepayments_index racepayments(_self, _self.value);
-            racepayments.emplace(_self, [&]( auto& row ) {
-                row.pkey = racepayments.available_primary_key();
-                row.racepkey = racePkey;
-                row.teamaccount = from; //The account who sent money
-                row.entryfee = eos;
-                row.feereleased = 0; //Payed, but not sent to race owner (until race is proven to take place with solved checkpoints).
-                row.eosusdprice = eosusd;
-                row.timestamp = now();
-            });
-
+            if(racePkey == 10){
+                //The Lost Diamond Entry fee
+                eosio::asset toTokenHolders = (eos * (20 * 100)) / 10000; //20 percent to BLKBILL token holders
+                eosio::asset toDiamondValue = (eos * (80 * 100)) / 10000; //80 percent to diamond value
+                diamondfund_index diamondfund(_self, _self.value);
+                auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+                auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+                diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                    row.toTokenHolders += toTokenHolders; //20%
+                    row.diamondValue += toDiamondValue; //80%
+                });
+            }
+            else{
+                racepayments_index racepayments(_self, _self.value);
+                racepayments.emplace(_self, [&]( auto& row ) {
+                    row.pkey = racepayments.available_primary_key();
+                    row.racepkey = racePkey;
+                    row.teamaccount = from; //The account who sent money
+                    row.entryfee = eos;
+                    row.feereleased = 0; //Payed, but not sent to race owner (until race is proven to take place with solved checkpoints).
+                    row.eosusdprice = eosusd;
+                    row.timestamp = now();
+                });
+            }
             //Race payment is stored in the table racepayments until the race starts. When the
             //participants solve checkpoints, the racepayment is transfered/distrubuted to race 
             //owner, the lost diamond and token holders. This is to insure that the race takes place.
@@ -491,8 +504,64 @@ public:
             });
             
         }
+        else if (memo.rfind("MintCheckpoint:", 0) == 0) { //2022-02-10
+            eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum.");
+            size_t n1 = memo.find(';');
+            size_t n2 = memo.find(';', n1 + 1);
+            size_t n3 = memo.find(';', n2 + 1);
+            size_t n4 = memo.find(';', n3 + 1);
+            size_t n5 = memo.find(';', n4 + 1);
+            
+            //Memo-format
+            //MintCheckpoint:123;title;imageurl;latitude;longitude;description;
+
+            std::string mintId = memo.substr(15, n1 - 15);
+            std::string title = memo.substr(n1 + 1, n2 - (n1 + 1));
+            std::string imageurl = memo.substr(n2 + 1, n3 - (n2 + 1));
+            double latitude = stringtodouble( memo.substr(n3 + 1, n4 - (n3 + 1)) ); 
+            double longitude = stringtodouble( memo.substr(n4 + 1, n5 - (n4 + 1)) );
+            std::string description = memo.substr(n5 + 1, n4 - (n3 + 1));
+            
+            eosio_assert(title.length() <= 55, "Max length of title is 55 characters.");
+            eosio_assert(imageurl.length() <= 100, "Max length of imageUrl is 100 characters.");
+
+            bool locationIsValid = true;
+            if((latitude < -90 || latitude > 90) || latitude == 0) {
+                locationIsValid = false;
+            }
+
+            if((longitude < -180 || longitude > 180) || longitude == 0){
+                locationIsValid = false;
+            }
+            
+            eosio_assert(locationIsValid, "Location (latitude and/ord longitude) is not valid.");
+            
+            treasure_index treasures(_self, _self.value);
+            
+            treasures.emplace(_self, [&]( auto& row ) {
+                row.pkey = treasures.available_primary_key();
+                row.owner = from;
+                row.title = title;
+                row.imageurl = imageurl;
+                row.latitude = latitude;
+                row.longitude = longitude;
+                row.expirationdate = now() + 94608000; //Treasure expires after three years if not found
+                row.status = "active";
+                row.timestamp = now();
+            });
+
+            //Add payment to diamond fund
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                row.diamondValue += eos; //100%
+            });  
+        
+        }
         else{
             
+            /* 2022-02-10 Replace by MintCheckpoint in Transfer
             if (memo.rfind("Activate Treasure No.", 0) == 0){
                 eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum value.");
 
@@ -512,7 +581,8 @@ public:
 
                 });       
             }
-            
+            */
+
             if(eos >= getPriceForCheckTreasureValueInEOS())
             {
                 //Amounts are added to the lost diamond ownership as investment to provision of income 
@@ -552,12 +622,10 @@ public:
             }
             else{
                 //All other smaller amounts will initiate BLKBILL token issue
-                cptblackbill::issue(from, eosio::asset(1, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLS for using Captain Black Bill.") );
+                //cptblackbill::issue(from, eosio::asset(1, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLS for using Captain Black Bill.") );
             
-                //eosio_assert(1 == 0 , "Invalid transfer to cpt.blackbill smart contract.");
+                eosio_assert(1 == 0 , "Invalid transfer to cpt.blackbill smart contract. Minimum amount is $1.");
             }
-
-            
         }
     }
     //=====================================================================
@@ -569,6 +637,41 @@ public:
         str.replace(start_pos, from.length(), to);
         return true;
     }
+
+    //2022-02-10
+    double stringtodouble(std::string str)
+    {
+        double dTmp = 0.0;
+        bool isNegative = false;
+        int iLen = str.length();
+        int iPos = str.find(".");
+        std::string strIntege = str.substr(0,iPos);
+        std::string strDecimal = str.substr(iPos + 1,iLen - iPos - 1 );
+        
+        if (strIntege[0] == '-')
+            isNegative = true;
+
+        for (int i = 0; i < iPos;i++)
+        {
+            if (strIntege[i] >= '0' && strIntege[i] <= '9')
+            {
+                dTmp = dTmp * 10 + strIntege[i] - '0';
+            }
+        }
+        
+        for (int j = 0; j < strDecimal.length(); j++)
+        {
+            if (strDecimal[j] >= '0' && strDecimal[j] <= '9')
+            {
+                dTmp += (strDecimal[j] - '0') * pow(10.0,(0 - j - 1));
+            }
+        }
+
+        if(isNegative)
+            dTmp = dTmp * -1;
+
+        return dTmp;
+    } 
 
     [[eosio::action]]
     void addtreasure(eosio::name owner, std::string title, std::string imageurl, 
@@ -813,6 +916,12 @@ public:
             row.secretcode = encryptedSecretCode;
         });
     }
+
+    //[[eosio::action]]
+    //void signin2fa(name user) 
+    //{
+    //    require_auth(user);
+    //}
 
     [[eosio::action]]
     void activatchest(uint64_t pkey, std::string encryptedSecretCode) 
