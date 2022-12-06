@@ -12,3 +12,14 @@
 #include <cmath>
 
 
+/**
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/time.hpp>
+#include <eosiolib/asset.hpp>
+#include <eosiolib/contract.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/transaction.hpp>
+#include <eosiolib/crypto.h>
+#include <boost/algorithm/string.hpp>
+
+*/

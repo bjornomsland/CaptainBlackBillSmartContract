@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Feb 10 21:21:07 2022",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Aug  5 12:27:27 2022",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -201,6 +201,20 @@
             ]
         },
         {
+            "name": "addteammbr",
+            "base": "",
+            "fields": [
+                {
+                    "name": "teamMember",
+                    "type": "name"
+                },
+                {
+                    "name": "youTubeName",
+                    "type": "string"
+                }
+            ]
+        },
+        {
             "name": "addtradmin",
             "base": "",
             "fields": [
@@ -255,32 +269,6 @@
                 {
                     "name": "timestamp",
                     "type": "uint32"
-                }
-            ]
-        },
-        {
-            "name": "addtreasure",
-            "base": "",
-            "fields": [
-                {
-                    "name": "owner",
-                    "type": "name"
-                },
-                {
-                    "name": "title",
-                    "type": "string"
-                },
-                {
-                    "name": "imageurl",
-                    "type": "string"
-                },
-                {
-                    "name": "latitude",
-                    "type": "float64"
-                },
-                {
-                    "name": "longitude",
-                    "type": "float64"
                 }
             ]
         },
@@ -373,6 +361,96 @@
             ]
         },
         {
+            "name": "checkpoint",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "title",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "imageurl",
+                    "type": "string"
+                },
+                {
+                    "name": "treasuremapurl",
+                    "type": "string"
+                },
+                {
+                    "name": "videourl",
+                    "type": "string"
+                },
+                {
+                    "name": "latitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "longitude",
+                    "type": "float64"
+                },
+                {
+                    "name": "tileidxy",
+                    "type": "float64"
+                },
+                {
+                    "name": "rankingpoint",
+                    "type": "uint64"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                },
+                {
+                    "name": "expirationdate",
+                    "type": "int32"
+                },
+                {
+                    "name": "secretcode",
+                    "type": "string"
+                },
+                {
+                    "name": "status",
+                    "type": "string"
+                },
+                {
+                    "name": "banditalarms",
+                    "type": "uint64"
+                },
+                {
+                    "name": "noOfCaptures",
+                    "type": "uint64"
+                },
+                {
+                    "name": "ctypeid",
+                    "type": "uint64"
+                },
+                {
+                    "name": "conqueredby",
+                    "type": "name"
+                },
+                {
+                    "name": "conqueredimg",
+                    "type": "string"
+                },
+                {
+                    "name": "jsondata",
+                    "type": "string"
+                }
+            ]
+        },
+        {
             "name": "clearacerslt",
             "base": "",
             "fields": []
@@ -440,6 +518,11 @@
                     "type": "uint32"
                 }
             ]
+        },
+        {
+            "name": "delteammbr",
+            "base": "",
+            "fields": []
         },
         {
             "name": "diamondfund",
@@ -692,6 +775,16 @@
             ]
         },
         {
+            "name": "exechestfnd",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "issue",
             "base": "",
             "fields": [
@@ -706,6 +799,16 @@
                 {
                     "name": "memo",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "moddmndval",
+            "base": "",
+            "fields": [
+                {
+                    "name": "valueInEos",
+                    "type": "asset"
                 }
             ]
         },
@@ -1153,6 +1256,36 @@
             ]
         },
         {
+            "name": "rndchestfnd",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                },
+                {
+                    "name": "executed",
+                    "type": "bool"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "int32"
+                }
+            ]
+        },
+        {
             "name": "settings",
             "base": "",
             "fields": [
@@ -1259,6 +1392,24 @@
             ]
         },
         {
+            "name": "teambearland",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "teamMember",
+                    "type": "name"
+                },
+                {
+                    "name": "youTubeName",
+                    "type": "string"
+                }
+            ]
+        },
+        {
             "name": "timelinelike",
             "base": "",
             "fields": [
@@ -1343,6 +1494,10 @@
                     "type": "float64"
                 },
                 {
+                    "name": "tileidxy",
+                    "type": "float64"
+                },
+                {
                     "name": "rankingpoint",
                     "type": "uint64"
                 },
@@ -1361,6 +1516,18 @@
                 {
                     "name": "status",
                     "type": "string"
+                },
+                {
+                    "name": "banditalarms",
+                    "type": "uint64"
+                },
+                {
+                    "name": "noOfCaptures",
+                    "type": "uint64"
+                },
+                {
+                    "name": "ctypeid",
+                    "type": "uint64"
                 },
                 {
                     "name": "conqueredby",
@@ -1433,6 +1600,10 @@
                 {
                     "name": "sponsoritempkey",
                     "type": "uint64"
+                },
+                {
+                    "name": "teammember",
+                    "type": "name"
                 }
             ]
         },
@@ -1512,13 +1683,13 @@
             "ricardian_contract": ""
         },
         {
-            "name": "addtradmin",
-            "type": "addtradmin",
+            "name": "addteammbr",
+            "type": "addteammbr",
             "ricardian_contract": ""
         },
         {
-            "name": "addtreasure",
-            "type": "addtreasure",
+            "name": "addtradmin",
+            "type": "addtradmin",
             "ricardian_contract": ""
         },
         {
@@ -1554,6 +1725,11 @@
         {
             "name": "delsellprice",
             "type": "delsellprice",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "delteammbr",
+            "type": "delteammbr",
             "ricardian_contract": ""
         },
         {
@@ -1597,8 +1773,18 @@
             "ricardian_contract": ""
         },
         {
+            "name": "exechestfnd",
+            "type": "exechestfnd",
+            "ricardian_contract": ""
+        },
+        {
             "name": "issue",
             "type": "issue",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "moddmndval",
+            "type": "moddmndval",
             "ricardian_contract": ""
         },
         {
@@ -1681,6 +1867,13 @@
         {
             "name": "accounts",
             "type": "account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "checkpoint",
+            "type": "checkpoint",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
@@ -1777,6 +1970,13 @@
             "key_types": []
         },
         {
+            "name": "rndchestfnd",
+            "type": "rndchestfnd",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
             "name": "settings",
             "type": "settings",
             "index_type": "i64",
@@ -1800,6 +2000,13 @@
         {
             "name": "tcrfund",
             "type": "tcrfund",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "teambearland",
+            "type": "teambearland",
             "index_type": "i64",
             "key_names": [],
             "key_types": []

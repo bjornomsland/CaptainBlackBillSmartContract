@@ -504,26 +504,57 @@ public:
             });
             
         }
-        else if (memo.rfind("MintCheckpoint:", 0) == 0) { //2022-02-10
+        else if (memo.rfind("RandomChestFunding:", 0) == 0) { //2022-02-10
             eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum.");
+
+            //The fund will be added to the cptblackbill account and redistributed by a 
+            //scheduled task that will fill random checkpoints
+            //Valid parameter examples: 
+            //RandomChestFunding: (blank)           Will distribute the fund to a random checkpoint
+            //RandomChestFunding:{ChestAmount:2}    Will distribute $2 to as many random checkpoints the total amount allow
+            //RandomChestFunding:{Spain:50,USA:50}  Will distribute fund 50% to a random checkpoint in Spain and 50% to a random checkpoint in USA 
+
+            rndchestfnd_index rndchestfnd(_self, _self.value);
+            rndchestfnd.emplace(_self, [&]( auto& row ) {
+                row.pkey = rndchestfnd.available_primary_key();
+                row.from = from;
+                row.amount = eos;
+                row.memo = memo.substr(19).c_str();
+                row.executed = false;
+                row.timestamp = now();
+            });
+        }
+        else if (memo.rfind("MintCheckpoint:", 0) == 0) { //2022-02-10
+            std::string assertMsg = "";
+            eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum.");
+            
+            //accounts accountstable(eosio::name("cptblackbill"), from.value);
+            //const auto& ac = accountstable.get(symbol_code("BLKBILL").raw());
+            //assertMsg = "Your BLKBILL balance" + std::to_string(ac.balance.amount);
+            //eosio_assert(1 == 2, assertMsg.c_str());
+            
             size_t n1 = memo.find(';');
             size_t n2 = memo.find(';', n1 + 1);
             size_t n3 = memo.find(';', n2 + 1);
             size_t n4 = memo.find(';', n3 + 1);
             size_t n5 = memo.find(';', n4 + 1);
+            size_t n6 = memo.find(';', n5 + 1);
+            size_t n7 = memo.find(';', n6 + 1);
             
             //Memo-format
-            //MintCheckpoint:123;title;imageurl;latitude;longitude;description;
+            //MintCheckpoint:123;title;imageurl;videourl;latitude;longitude;description;
 
-            std::string mintId = memo.substr(15, n1 - 15);
-            std::string title = memo.substr(n1 + 1, n2 - (n1 + 1));
-            std::string imageurl = memo.substr(n2 + 1, n3 - (n2 + 1));
-            double latitude = stringtodouble( memo.substr(n3 + 1, n4 - (n3 + 1)) ); 
-            double longitude = stringtodouble( memo.substr(n4 + 1, n5 - (n4 + 1)) );
-            std::string description = memo.substr(n5 + 1, n4 - (n3 + 1));
+            std::string mintId =               memo.substr(15, n1 - 15);
+            std::string title =                memo.substr(n1 + 1, n2 - (n1 + 1));
+            std::string imageurl =             memo.substr(n2 + 1, n3 - (n2 + 1));
+            std::string videourl =             memo.substr(n3 + 1, n4 - (n3 + 1));
+            double latitude = stringtodouble(  memo.substr(n4 + 1, n5 - (n4 + 1))); 
+            double longitude = stringtodouble( memo.substr(n5 + 1, n6 - (n5 + 1)));
+            std::string description =          memo.substr(n6 + 1, n7 - (n6 + 1));
             
             eosio_assert(title.length() <= 55, "Max length of title is 55 characters.");
             eosio_assert(imageurl.length() <= 100, "Max length of imageUrl is 100 characters.");
+            eosio_assert(videourl.length() <= 100, "Max length of videoUrl is 100 characters.");
 
             bool locationIsValid = true;
             if((latitude < -90 || latitude > 90) || latitude == 0) {
@@ -535,16 +566,62 @@ public:
             }
             
             eosio_assert(locationIsValid, "Location (latitude and/ord longitude) is not valid.");
+            int tileZoomLevel = 17;
+            int xTile = (int)(floor((longitude + 180.0) / 360.0 * (1 << tileZoomLevel)));
+            double latrad = latitude * M_PI/180.0;
+	        int yTile = (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << tileZoomLevel)));
             
+            std::string s1 = std::to_string(xTile) + "." + std::to_string(yTile);
+            double tilexy = (double)xTile + ( (double)yTile / pow(10, std::to_string(yTile).length()) ); 
+
+            //Check if map tile is available (not owned by others)
+            //std::string testRet = "";
+            bool mapTileIsTaken = false;
+            eosio::name landOwner;
+            treasure_index existingTreasures(_self, _self.value);
+            auto idx = existingTreasures.get_index<name("tileidxy"_n)>();  
+            auto itrTiles = idx.lower_bound(tilexy); 
+            int itrTileCounter = 0;
+            
+            while (itrTiles != idx.end())
+            {
+                int existingTileX = (int)(floor((itrTiles->longitude + 180.0) / 360.0 * (1 << tileZoomLevel)));
+                double existingLatrad = itrTiles->latitude * M_PI/180.0;
+	            int existingTileY = (int)(floor((1.0 - asinh(tan(existingLatrad)) / M_PI) / 2.0 * (1 << tileZoomLevel)));
+                if(existingTileX == xTile && existingTileY == yTile){
+                    mapTileIsTaken = true;
+                    landOwner = name{itrTiles->owner};
+                    break;   
+                }
+
+                itrTiles++;
+                itrTileCounter++;
+
+                if(itrTileCounter > 10) //Lower bound loop will normally find existing tile (if any) at first item. 
+                    break;
+            }
+
+            if(mapTileIsTaken == true && landOwner == from){
+                assertMsg = "You already own this land and have a checkpoint on it. (Map Tile: https://tile.openstreetmap.org/17/" + std::to_string(xTile) + "/" + std::to_string(yTile) + ".png)";
+                eosio_assert(1 == 2, assertMsg.c_str());
+            }
+            else if(mapTileIsTaken == true && landOwner != from){
+                assertMsg = "This land (map tile https://tile.openstreetmap.org/17/" + std::to_string(xTile) + "/" + std::to_string(yTile) + ".png) is owned by account " + name{landOwner}.to_string() + ". You are not allowed to create new checkpoints here.";
+                eosio_assert(1 == 2, assertMsg.c_str());    
+            }
+
             treasure_index treasures(_self, _self.value);
             
             treasures.emplace(_self, [&]( auto& row ) {
                 row.pkey = treasures.available_primary_key();
                 row.owner = from;
                 row.title = title;
+                row.description = description;
                 row.imageurl = imageurl;
+                row.videourl = videourl;
                 row.latitude = latitude;
                 row.longitude = longitude;
+                row.tileidxy = tilexy;
                 row.expirationdate = now() + 94608000; //Treasure expires after three years if not found
                 row.status = "active";
                 row.timestamp = now();
@@ -613,9 +690,24 @@ public:
                 diamondfund_index diamondfund(_self, _self.value);
                 auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
                 auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
-                diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
-                    row.diamondValue += eos; //100%
-                });  
+
+                if(diamondFundIterator->foundTimestamp == 0){
+                    //present diamond has not been found. Add value to existing diamond
+                    diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                        row.diamondValue += eos; //100%
+                    });  
+                }
+                else{
+                    //present diamond has been found. Create new diamond and add transferred value to new diamond
+                    //diamondfund_index diamondfund(_code, _code.value);
+                    diamondfund.emplace(_self, [&]( auto& row ) { 
+                        row.pkey = diamondfund.available_primary_key();
+                        row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                        row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                        row.diamondValue = eos; 
+                        row.foundTimestamp = 0;
+                    });
+                }
 
                 //cptblackbill::issue(from, eosio::asset(10, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLs for investing in the lost diamond.") );
             
@@ -624,7 +716,7 @@ public:
                 //All other smaller amounts will initiate BLKBILL token issue
                 //cptblackbill::issue(from, eosio::asset(1, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLS for using Captain Black Bill.") );
             
-                eosio_assert(1 == 0 , "Invalid transfer to cpt.blackbill smart contract. Minimum amount is $1.");
+                //eosio_assert(1 == 0 , "Invalid transfer to cpt.blackbill smart contract. Minimum amount is $1.");
             }
         }
     }
@@ -673,6 +765,7 @@ public:
         return dTmp;
     } 
 
+    /* 2022-07-04 Add treasure is replaced with MintCheckpoint in transfer function 
     [[eosio::action]]
     void addtreasure(eosio::name owner, std::string title, std::string imageurl, 
                      double latitude, double longitude) 
@@ -706,7 +799,7 @@ public:
             row.status = "created";
             row.timestamp = now();
         });
-    }
+    } */
 
     //2021-10-03 For selling a treasure. The treasure owner can add a asking price for the treasure
     [[eosio::action]]
@@ -777,6 +870,35 @@ public:
     }
 
     [[eosio::action]]
+    void addteammbr(eosio::name teamMember, std::string youTubeName) 
+    {
+        require_auth("cptblackbill"_n); //Only allowed by cptblackbill 
+        
+        teambearland_index teambearland(_code, _code.value);
+        teambearland.emplace(_self, [&]( auto& row ) {
+            row.pkey = teambearland.available_primary_key();
+            row.teamMember = teamMember;
+            row.youTubeName = youTubeName;
+        });
+    }
+
+    [[eosio::action]]
+    void delteammbr() {
+        require_auth("cptblackbill"_n);
+        
+        uint64_t counter = 0;
+        teambearland_index teambearland(_self, _self.value);
+        auto itr = teambearland.begin();
+        while(itr != teambearland.end()) {
+            itr = teambearland.erase(itr);
+
+            counter++;
+            if(counter >= 500) //Prevent exceed cpu usage
+                break;
+        } 
+    }
+
+    [[eosio::action]]
     void addtradmin(uint64_t pkey, eosio::name owner, std::string title, std::string description, std::string treasuremapurl,
                      std::string imageurl, std::string videourl, double latitude, double longitude, uint64_t rankingpoint,
                      std::string status, uint32_t expirationdate, uint32_t timestamp) 
@@ -831,7 +953,7 @@ public:
         eosio_assert(imageurl.length() <= 100, "Max length of image url is 100 characters.");
         eosio_assert(videourl.length() <= 100, "Max length of video url is 100 characters.");
         
-        treasures.modify(iterator, user, [&]( auto& row ) {
+        treasures.modify(iterator, _self, [&]( auto& row ) {
             row.title = title;
             row.description = description;
             row.videourl = videourl;
@@ -842,6 +964,21 @@ public:
             else
                 row.imageurl = imageurl;
         });
+    }
+
+    [[eosio::action]]
+    void moddmndval(asset valueInEos) 
+    {
+        require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
+
+        //Modify diamond value to correct amount in EOS
+        //Used by cptblackbill account if diamond value exceeds actual amount on account or if something is wrong.
+        diamondfund_index diamondfund(_self, _self.value);
+        auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+        auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+        diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+            row.diamondValue = valueInEos; 
+        });  
     }
 
     [[eosio::action]]
@@ -883,9 +1020,18 @@ public:
         
         eosio_assert(locationIsValid, "Location (latitude and/ord longitude) is not valid.");
 
+        //Get map tilexy id
+        int tileZoomLevel = 17;
+        int xTile = (int)(floor((longitude + 180.0) / 360.0 * (1 << tileZoomLevel)));
+        double latrad = latitude * M_PI/180.0;
+        int yTile = (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << tileZoomLevel)));
+        std::string s1 = std::to_string(xTile) + "." + std::to_string(yTile);
+        double tilexy = (double)xTile + ( (double)yTile / pow(10, std::to_string(yTile).length()) ); // (std::to_string(yTile).length() * 10);
+
         treasures.modify(iterator, user, [&]( auto& row ) {
             row.latitude = latitude;
             row.longitude = longitude;
+            row.tileidxy = tilexy;
         });
     }
 
@@ -989,7 +1135,7 @@ public:
 
     [[eosio::action]]
     void unlockchest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, 
-                     uint64_t sponsoritempkey) { //bool isNoPaymentRobbery
+                     uint64_t sponsoritempkey, name teammember) { //bool isNoPaymentRobbery
         require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
 
         //Get total amount in Lost Diamond if diamond is found in this treasure
@@ -1016,7 +1162,7 @@ public:
         name treasureConquerer = iterator->conqueredby;
 
         treasures.modify(iterator, _self, [&]( auto& row ) {
-            //row.status = "robbed";
+            row.status = "active";
             
             if(byuser != treasureowner)
                 row.conqueredby = byuser; //The treasure has been conquered by the robber. The robber has now access to activate the treasure with a new code.
@@ -1066,11 +1212,21 @@ public:
                 payouteos = payouteos / 2;
 
                 //Transfer treasure chest value to the user who unlocked the treasure
-                action(
-                    permission_level{ get_self(), "active"_n },
-                    "eosio.token"_n, "transfer"_n,
-                    std::make_tuple(get_self(), byuser, payouteos, std::string("Congrats for solving Treasure No." + std::to_string(treasurepkey) + " on CptBlackBill!"))
-                ).send();
+                if(byuser == "bearland.gm"_n && is_account(teammember)){ //Payout to team-member of bearland.gm 2022-08-05
+                    action(
+                        permission_level{ get_self(), "active"_n },
+                        "eosio.token"_n, "transfer"_n,
+                        std::make_tuple(get_self(), teammember, payouteos, std::string("The Lost Diamond Adventure Race. Congrats for solving checkpoint No." + std::to_string(treasurepkey) + " as BearLand team-member!"))
+                    ).send();
+                }
+                else{
+                    action(
+                        permission_level{ get_self(), "active"_n },
+                        "eosio.token"_n, "transfer"_n,
+                        std::make_tuple(get_self(), byuser, payouteos, std::string("Congrats for solving checkpoint No." + std::to_string(treasurepkey) + " on The Lost Diamond!"))
+                    ).send();
+                }
+                
 
                 //Transfer the same amount to the user who created the treasure
                 //Share the amount with the conquerer if the treasure has a conquerer
@@ -1079,7 +1235,7 @@ public:
                     action(
                         permission_level{ get_self(), "active"_n },
                         "eosio.token"_n, "transfer"_n,
-                        std::make_tuple(get_self(), treasureConquerer, payouteos, std::string("Congrats! Treasure No." + std::to_string(treasurepkey) + " has been solved by the owner. This is your equal share of the treasure chest."))
+                        std::make_tuple(get_self(), treasureConquerer, payouteos, std::string("Congrats! Checkpoint No." + std::to_string(treasurepkey) + " has been solved by the owner. This is your equal share of the treasure chest."))
                     ).send();
                 }
                 else if(is_account(treasureConquerer)){
@@ -1311,7 +1467,118 @@ public:
     void btulla(name byuser, uint64_t fromPkey, asset testeos, uint64_t toPkey) {
         require_auth("cptblackbill"_n);
 
+        //Add TileIdxy on treasures
+        /*std::string testRet = "";
+        uint64_t counter = 0;
+        treasure_index treasures(_code, _code.value);
+        auto treasuresItr = treasures.begin();
+        while(treasuresItr != treasures.end()) {
+            
+            int tileZoomLevel = 17;
+            int xTile = (int)(floor((treasuresItr->longitude + 180.0) / 360.0 * (1 << tileZoomLevel)));
+            double latrad = treasuresItr->latitude * M_PI/180.0;
+	        int yTile = (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << tileZoomLevel)));
+
+            std::string s1 = std::to_string(xTile) + "." + std::to_string(yTile);
+            double tilexy = (double)xTile + ( (double)yTile / pow(10, std::to_string(yTile).length()) ); // (std::to_string(yTile).length() * 10);
+
+            treasures.modify(treasuresItr, byuser, [&]( auto& row ) {
+                row.tileidxy = tilexy;
+            });  
+
+            treasuresItr++;
+
+            counter++;
+            if(counter >= fromPkey)
+                break;   
+        } */
+
+        //eosio_assert(1 == 2, testRet.c_str());
         
+        
+
+        //require_auth("cptblackbill"_n); //"Updating expiration date is only allowed by CptBlackBill. This is to make sure (verified gps location by CptBlackBill) that the owner has actually been on location and entered secret code
+        //treasure_index treasures(_code, _code.value);
+        //auto iterator = treasures.find(pkey);
+        //eosio_assert(iterator != treasures.end(), "Treasure not found");
+        
+        //treasures.modify(iterator, user, [&]( auto& row ) {
+        //    row.expirationdate = now() + 94608000; //Treasure ownership renewed for three years
+        //});
+
+        
+        //Remove checkpoints rows
+        /*checkpoint_index checkpointsd(_self, _self.value);
+        auto checkpointsItr = checkpointsd.begin();
+        while(checkpointsItr != checkpointsd.end()) {
+            checkpointsItr = checkpointsd.erase(checkpointsItr);
+        } */
+
+        //Remove treasures rows
+        /*treasure_index treasures(_self, _self.value);
+        auto treasuresItr = treasures.begin();
+        while(treasuresItr != treasures.end()) {
+            treasuresItr = treasures.erase(treasuresItr);
+        } */
+        
+        //Copy all treasures to checkpoints
+        /*treasure_index treasures(_self, _self.value);
+        checkpoint_index checkpoints(_self, _self.value);
+        for (auto itr = treasures.begin(); itr != treasures.end(); itr++) {
+            checkpoints.emplace(_self, [&]( auto& row ) {
+                row.pkey = itr->pkey;
+                row.owner = itr->owner;
+                row.title = itr->title;
+                row.description = itr->description;
+                row.imageurl = itr->imageurl;
+                row.treasuremapurl = itr->treasuremapurl;
+                row.videourl = itr->videourl;
+                row.latitude = itr->latitude;
+                row.longitude = itr->longitude;
+                row.tileidxy = itr->tileidxy;
+                row.rankingpoint = itr->rankingpoint;
+                row.timestamp = itr->timestamp;
+                row.expirationdate = itr->expirationdate;
+                row.secretcode = itr->secretcode;
+                row.status = itr->status;
+                row.banditalarms = 0;
+                row.noOfCaptures = 0;
+                row.ctypeid = 0;
+                row.conqueredby = itr->conqueredby;
+                row.conqueredimg = itr->conqueredimg;
+                row.jsondata = itr->jsondata;
+            });
+        } */
+
+        //Copy all checkpoints to treasures 
+        /*checkpoint_index checkpoints(_self, _self.value);
+        treasure_index treasures(_self, _self.value);
+        for (auto itr = checkpoints.begin(); itr != checkpoints.end(); itr++) {
+            treasures.emplace(_self, [&]( auto& row ) {
+                row.pkey = itr->pkey;
+                row.owner = itr->owner;
+                row.title = itr->title;
+                row.description = itr->description;
+                row.imageurl = itr->imageurl;
+                row.treasuremapurl = itr->treasuremapurl;
+                row.videourl = itr->videourl;
+                row.latitude = itr->latitude;
+                row.longitude = itr->longitude;
+                row.tileidxy = itr->tileidxy;
+                row.rankingpoint = itr->rankingpoint;
+                row.timestamp = itr->timestamp;
+                row.expirationdate = itr->expirationdate;
+                row.secretcode = itr->secretcode;
+                row.status = itr->status;
+                row.banditalarms = itr->banditalarms;
+                row.noOfCaptures = itr->noOfCaptures;
+                row.ctypeid = 0;
+                row.conqueredby = itr->conqueredby;
+                row.conqueredimg = itr->conqueredimg;
+                row.jsondata = itr->jsondata;
+            });
+        } */
+
         //Remove exchngbuylog rows
         //exchngbuylog_index exchngbuylog(_self, _self.value);
         //auto buylogItr = exchngbuylog.begin();
@@ -1926,7 +2193,7 @@ public:
         eosio_assert(iterator != settings.end(), "Setting does not exist");
         settings.erase(iterator);
     }
-    
+
     [[eosio::action]]
     void eraseresult(uint64_t pkey) {
         require_auth("cptblackbill"_n);
@@ -1945,6 +2212,19 @@ public:
         auto iterator = tcrfund.find(account.value);
         eosio_assert(iterator != tcrfund.end(), "Tcrf-account does not exist.");
         tcrfund.erase(iterator);
+    }
+
+    [[eosio::action]]
+    void exechestfnd(uint64_t pkey) {
+        require_auth("cptblackbill"_n);
+        
+        rndchestfnd_index rndchestfnd(_code, _code.value);
+        auto iterator = rndchestfnd.find(pkey);
+        eosio_assert(iterator != rndchestfnd.end(), "Chest funding not found");
+        
+        rndchestfnd.modify(iterator, _self, [&]( auto& row ) {
+            row.executed = true;
+        });
     }
 
     [[eosio::action]]
@@ -2101,21 +2381,63 @@ private:
         std::string videourl; //Link to video (Must be a video provider that support API to views and likes)
         double latitude; //GPS coordinate
         double longitude; //GPS coordinate
+        double tileidxy; //Map tile id by x,y. Zoom level 17
         uint64_t rankingpoint; //Calculated and updated by CptBlackBill based on video and turnover stats.  
         int32_t timestamp; //Date created
         int32_t expirationdate; //Date when ownership expires - other users can then take ownnership of this treasure location
         std::string secretcode;
         std::string status;
+        uint64_t banditalarms; 
+        uint64_t noOfCaptures;
+        uint64_t ctypeid; //Type of checkpoint
         eosio::name conqueredby; //If someone has robbed and conquered the treasure. Conquered by user will get 75% of the treasure value next time it's robbed. The owner will still get 25%
         std::string conqueredimg; //The user who conquered can add another image to the treasure.
         std::string jsondata;  //additional field for other info in json format.
         uint64_t primary_key() const { return  pkey; }
         uint64_t by_owner() const {return owner.value; } //second key, can be non-unique
-        uint64_t by_rankingpoint() const {return rankingpoint; } //fourth key, can be non-unique
+        double by_latitude() const {return latitude; } //third key, can be non-unique
+        double by_tileid() const {return tileidxy; } //fourth key, can be non-unique
+        uint64_t by_ctypeid() const {return ctypeid; } //fifth key, can be non-unique
     };
-    typedef eosio::multi_index<"treasure"_n, treasure, 
+    typedef eosio::multi_index<"treasure"_n, treasure,  
             eosio::indexed_by<"owner"_n, const_mem_fun<treasure, uint64_t, &treasure::by_owner>>,
-            eosio::indexed_by<"rankingpoint"_n, const_mem_fun<treasure, uint64_t, &treasure::by_rankingpoint>>> treasure_index;
+            eosio::indexed_by<"latitude"_n, const_mem_fun<treasure, double, &treasure::by_latitude>>,
+            eosio::indexed_by<"tileidxy"_n, const_mem_fun<treasure, double, &treasure::by_tileid>>,
+            eosio::indexed_by<"ctypeid"_n, const_mem_fun<treasure, uint64_t, &treasure::by_ctypeid>>> treasure_index;
+
+    struct [[eosio::table]] checkpoint {
+        uint64_t pkey;
+        eosio::name owner;
+        std::string title; 
+        std::string description;
+        std::string imageurl;
+        std::string treasuremapurl;
+        std::string videourl; //Link to video (Must be a video provider that support API to views and likes)
+        double latitude; //GPS coordinate
+        double longitude; //GPS coordinate
+        double tileidxy; //Map tile id by x,y. Zoom level 17
+        uint64_t rankingpoint; //Calculated and updated by CptBlackBill based on video and turnover stats.  
+        int32_t timestamp; //Date created
+        int32_t expirationdate; //Date when ownership expires - other users can then take ownnership of this treasure location
+        std::string secretcode;
+        std::string status;
+        uint64_t banditalarms; 
+        uint64_t noOfCaptures;
+        uint64_t ctypeid; //Type of checkpoint
+        eosio::name conqueredby; //If someone has robbed and conquered the treasure. Conquered by user will get 75% of the treasure value next time it's robbed. The owner will still get 25%
+        std::string conqueredimg; //The user who conquered can add another image to the treasure.
+        std::string jsondata;  //additional field for other info in json format.
+        uint64_t primary_key() const { return  pkey; }
+        uint64_t by_owner() const {return owner.value; } //second key, can be non-unique
+        double by_latitude() const {return latitude; } //third key, can be non-unique
+        double by_tileid() const {return tileidxy; } //fourth key, can be non-unique
+        uint64_t by_ctypeid() const {return ctypeid; } //fifth key, can be non-unique
+    };
+    typedef eosio::multi_index<"checkpoint"_n, checkpoint, 
+            eosio::indexed_by<"owner"_n, const_mem_fun<checkpoint, uint64_t, &checkpoint::by_owner>>,
+            eosio::indexed_by<"latitude"_n, const_mem_fun<checkpoint, double, &checkpoint::by_latitude>>,
+            eosio::indexed_by<"tileidxy"_n, const_mem_fun<checkpoint, double, &checkpoint::by_tileid>>,
+            eosio::indexed_by<"ctypeid"_n, const_mem_fun<checkpoint, uint64_t, &checkpoint::by_ctypeid>>> checkpoint_index;
 
     struct [[eosio::table]] tcrfund {
         eosio::name account;
@@ -2177,6 +2499,18 @@ private:
     };
     typedef eosio::multi_index<"payouttokenh"_n, payouttokenh> payouttokenh_index;
 
+    struct [[eosio::table]] rndchestfnd {
+        uint64_t pkey;
+        eosio::name from;
+        eosio::asset amount;
+        std::string memo;
+        bool executed;
+        int32_t timestamp; 
+        
+        uint64_t primary_key() const { return  pkey; }
+    };
+    typedef eosio::multi_index<"rndchestfnd"_n, rndchestfnd> rndchestfnd_index;
+    
     struct [[eosio::table]] settings {
         eosio::name keyname; 
         std::string stringvalue;
@@ -2355,6 +2689,15 @@ private:
     };
     typedef eosio::multi_index<"crewinfo"_n, crewinfo> crewinfo_index;
 
+    struct [[eosio::table]] teambearland {
+        uint64_t pkey;
+        eosio::name teamMember;
+        std::string youTubeName;
+        
+        uint64_t primary_key() const { return  pkey; }
+    };
+    typedef eosio::multi_index<"teambearland"_n, teambearland> teambearland_index;
+
     
     //2020-05-16 Struck for selling tokens on CptBlackBill exchange
     struct [[eosio::table]] exchngtokens {
@@ -2484,10 +2827,10 @@ extern "C" {
   void apply(uint64_t receiver, uint64_t code, uint64_t action) {
     auto self = receiver;
     //cptblackbill _cptblackbill(receiver);
-    if(code==receiver && action==name("addtreasure").value) {
-      execute_action(name(receiver), name(code), &cptblackbill::addtreasure );
-    }
-    else if(code==receiver && action==name("btulla").value) {
+    //if(code==receiver && action==name("addtreasure").value) {
+    //  execute_action(name(receiver), name(code), &cptblackbill::addtreasure );
+    //}
+    if(code==receiver && action==name("btulla").value) {
       execute_action(name(receiver), name(code), &cptblackbill::btulla );
     }
     else if(code==receiver && action==name("calcdmndprov").value) {
@@ -2498,6 +2841,12 @@ extern "C" {
     }
     else if(code==receiver && action==name("payout").value) {
       execute_action(name(receiver), name(code), &cptblackbill::payout );
+    }
+    else if(code==receiver && action==name("addteammbr").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::addteammbr );
+    }
+    else if(code==receiver && action==name("delteammbr").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::delteammbr );
     }
     else if(code==receiver && action==name("addtradmin").value) {
       execute_action(name(receiver), name(code), &cptblackbill::addtradmin );
@@ -2520,11 +2869,17 @@ extern "C" {
     else if(code==receiver && action==name("modtreasure").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modtreasure );
     }
+    else if(code==receiver && action==name("exechestfnd").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::exechestfnd );
+    }
     else if(code==receiver && action==name("modrace").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modrace );
     }
     else if(code==receiver && action==name("modtreasimg").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modtreasimg );
+    }
+    else if(code==receiver && action==name("moddmndval").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::moddmndval );
     }
     else if(code==receiver && action==name("modgps").value) {
       execute_action(name(receiver), name(code), &cptblackbill::modgps );
