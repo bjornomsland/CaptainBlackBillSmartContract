@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Aug  5 12:27:27 2022",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Dec 29 11:54:59 2022",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -1613,6 +1613,10 @@
             "fields": [
                 {
                     "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "rankingPoints",
                     "type": "uint64"
                 }
             ]

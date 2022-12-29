@@ -1079,30 +1079,45 @@ public:
         eosio_assert(iterator != treasures.end(), "Treasure not found");
         
         //Get number of unique accounts that has solved treasures created by treasure owner = rating points.
-        uint64_t numberOfUniqueUserUnlocks = 0;
-        std::set<uint64_t> uniqueUsersSet;
+        //2022-12-29 Removed. Ranking points are calculated in front end form.
+        //uint64_t numberOfUniqueUserUnlocks = 0;
+        //std::set<uint64_t> uniqueUsersSet;
 
-        results_index results(_code, _code.value);
-        auto resultItems = results.get_index<"creator"_n>();
-        auto iter = resultItems.find(iterator->owner.value);
-        while (iter != resultItems.end()) {
-            if(iter->creator != iterator->owner) //Stop when list is outside the values of the treasures creator
-                break;
-            
-            uniqueUsersSet.insert(iter->user.value); //insert only add unique values to a set
-            iter++;
-        } 
-        numberOfUniqueUserUnlocks = uniqueUsersSet.size();
+        //results_index results(_code, _code.value);
+        //auto resultItems = results.get_index<"creator"_n>();
+        //auto iter = resultItems.find(iterator->owner.value);
+        //while (iter != resultItems.end()) {
+        //    if(iter->creator != iterator->owner) //Stop when list is outside the values of the treasures creator
+        //        break;
+        //    
+        //    uniqueUsersSet.insert(iter->user.value); //insert only add unique values to a set
+        //    iter++;
+        //} 
+        //numberOfUniqueUserUnlocks = uniqueUsersSet.size();
         
         treasures.modify(iterator, _self, [&]( auto& row ) {
             row.status = "active";
             row.secretcode = encryptedSecretCode;
-            row.rankingpoint = numberOfUniqueUserUnlocks;
+            //row.rankingpoint = numberOfUniqueUserUnlocks; 2022-12-29 Removed
             row.expirationdate = now() + 94608000; //Treasure ownership renewed for three years
         });
     }
 
+    //2022-12-29 updranking. Ranking points are calculated by several criterias in a front end view.
     [[eosio::action]]
+    void updranking(uint64_t pkey, uint64_t rankingPoints) 
+    {
+        require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
+
+        treasure_index treasures(_code, _code.value);
+        auto iterator = treasures.find(pkey);
+        eosio_assert(iterator != treasures.end(), "Treasure not found");
+        
+        treasures.modify(iterator, _self, [&]( auto& row ) {
+            row.rankingpoint = rankingPoints;
+        });
+    }
+    /*
     void updranking(uint64_t pkey) 
     {
         require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
@@ -1131,7 +1146,7 @@ public:
         treasures.modify(iterator, _self, [&]( auto& row ) {
             row.rankingpoint = numberOfUniqueUserUnlocks;
         });
-    }
+    } */
 
     [[eosio::action]]
     void unlockchest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, 
