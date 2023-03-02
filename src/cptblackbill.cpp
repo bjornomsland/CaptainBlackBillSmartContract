@@ -1228,11 +1228,52 @@ public:
 
                 //Transfer treasure chest value to the user who unlocked the treasure
                 if(byuser == "bearland.gm"_n && is_account(teammember)){ //Payout to team-member of bearland.gm 2022-08-05
-                    action(
-                        permission_level{ get_self(), "active"_n },
-                        "eosio.token"_n, "transfer"_n,
-                        std::make_tuple(get_self(), teammember, payouteos, std::string("The Lost Diamond Adventure Race. Congrats for solving checkpoint No." + std::to_string(treasurepkey) + " as BearLand team-member!"))
-                    ).send();
+                    
+                    //2023-03-02
+                    //If TLD found -> Send 10% of the value to teammember 
+                    //If TLD not found -> Send all to teammember 
+                    
+                    if(teammember == "bearland.gm"_n){
+                        //No teammember. Send everyting til byuser account
+                        action(
+                            permission_level{ get_self(), "active"_n },
+                            "eosio.token"_n, "transfer"_n,
+                            std::make_tuple(get_self(), byuser, payouteos, std::string("The Lost Diamond Adventure Race. Congrats for solving checkpoint No." + std::to_string(treasurepkey) + "."))
+                        ).send();    
+                    }
+                    else{
+                        if(lostdiamondisfound){
+                            //Send 10 percent of the value to teammember
+                            double toTeamMember = (payouteos.amount * 10) / 100;
+                            double toBearland = (payouteos.amount * 90) / 100;
+
+                            uint64_t intToTeamMember = toTeamMember;
+                            asset eosToTeamMember = eosio::asset(intToTeamMember, symbol(symbol_code("EOS"), 4));
+
+                            uint64_t intToBearland = toBearland;
+                            asset eosToBearland = eosio::asset(intToBearland, symbol(symbol_code("EOS"), 4));
+
+                            action(
+                                permission_level{ get_self(), "active"_n },
+                                "eosio.token"_n, "transfer"_n,
+                                std::make_tuple(get_self(), teammember, eosToTeamMember, std::string("The Lost Diamond Adventure Race. 10 percent bonus as Bearland teammember on checkpoint No." + std::to_string(treasurepkey) + "."))
+                            ).send();
+
+                            action(
+                                permission_level{ get_self(), "active"_n },
+                                "eosio.token"_n, "transfer"_n,
+                                std::make_tuple(get_self(), byuser, eosToBearland, std::string("The Lost Diamond Adventure Race. Congrats for solving checkpoint No." + std::to_string(treasurepkey) + "."))
+                            ).send();
+                        }
+                        else{
+                            //Send all to teammember
+                            action(
+                                permission_level{ get_self(), "active"_n },
+                                "eosio.token"_n, "transfer"_n,
+                                std::make_tuple(get_self(), teammember, payouteos, std::string("The Lost Diamond Adventure Race. Bearland teammember payout for checkpoint No." + std::to_string(treasurepkey) + "."))
+                            ).send();
+                        }   
+                    }
                 }
                 else{
                     action(
@@ -1363,6 +1404,92 @@ public:
                 ).send();
             }
         }
+    }
+
+    [[eosio::action]]
+    void unlocktest(uint64_t treasurepkey, asset payouteos, name byuser, bool lostdiamondisfound, 
+                     uint64_t sponsoritempkey, name teammember) { //bool isNoPaymentRobbery
+        require_auth("cptblackbill"_n); //Only allowed by cptblackbill contract
+
+        //Get total amount in Lost Diamond if diamond is found in this treasure
+        //eosio::asset totalamountinlostdiamond = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+        if(lostdiamondisfound){
+            //tcrfund_index tcrfund(_self, _self.value);
+            //auto itr = tcrfund.upper_bound(0);
+            //for (auto itr = tcrfund.begin(); itr != tcrfund.end(); itr++) {
+            //    totalamountinlostdiamond = totalamountinlostdiamond + (*itr).investedamount;
+            //}
+
+            //2020-02-29
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+            eosio_assert(diamondFundIterator->foundTimestamp == 0, "Diamond is already found.");
+            payouteos = payouteos + diamondFundIterator->diamondValue; //Add lost diamond value to the treasure value
+        }
+
+        treasure_index treasures(_code, _code.value);
+        auto iterator = treasures.find(treasurepkey);
+        eosio_assert(iterator != treasures.end(), "Treasure not found");
+        name treasureowner = iterator->owner; 
+        name treasureConquerer = iterator->conqueredby;
+
+        treasures.modify(iterator, _self, [&]( auto& row ) {
+            row.status = "active";
+            
+            if(payouteos.amount > 0) 
+            {
+                //Treasure has been unlocked by <byuser>. 
+                //Split payout amount in two - since both creator and finder get an equal share of the treasure
+                payouteos = payouteos / 2;
+
+                //Transfer treasure chest value to the user who unlocked the treasure
+                if(byuser == "bearland.gm"_n && is_account(teammember)){ //Payout to team-member of bearland.gm 2022-08-05
+                    
+                    if(teammember == "bearland.gm"_n){
+                        //No teammember. Send everyting til byuser account
+                        action(
+                            permission_level{ get_self(), "active"_n },
+                            "eosio.token"_n, "transfer"_n,
+                            std::make_tuple(get_self(), byuser, payouteos, std::string("TEST: The Lost Diamond Adventure Race. Congrats for solving checkpoint No." + std::to_string(treasurepkey) + "."))
+                        ).send();    
+                    }
+                    else{
+                        if(lostdiamondisfound){
+                            //Send 10 percent of the value to teammember
+                            double toTeamMember = (payouteos.amount * 10) / 100;
+                            double toBearland = (payouteos.amount * 90) / 100;
+
+                            uint64_t intToTeamMember = toTeamMember;
+                            asset eosToTeamMember = eosio::asset(intToTeamMember, symbol(symbol_code("EOS"), 4));
+
+                            uint64_t intToBearland = toBearland;
+                            asset eosToBearland = eosio::asset(intToBearland, symbol(symbol_code("EOS"), 4));
+
+                            action(
+                                permission_level{ get_self(), "active"_n },
+                                "eosio.token"_n, "transfer"_n,
+                                std::make_tuple(get_self(), teammember, eosToTeamMember, std::string("TEST: The Lost Diamond Adventure Race. 10 percent bonus as Bearland teammember on checkpoint No." + std::to_string(treasurepkey) + "."))
+                            ).send();
+
+                            action(
+                                permission_level{ get_self(), "active"_n },
+                                "eosio.token"_n, "transfer"_n,
+                                std::make_tuple(get_self(), byuser, eosToBearland, std::string("TEST: The Lost Diamond Adventure Race. Congrats for solving checkpoint No." + std::to_string(treasurepkey) + "."))
+                            ).send();
+                        }
+                        else{
+                            //Send all to teammember
+                            action(
+                                permission_level{ get_self(), "active"_n },
+                                "eosio.token"_n, "transfer"_n,
+                                std::make_tuple(get_self(), teammember, payouteos, std::string("TEST: The Lost Diamond Adventure Race. 10 percent bonus as Bearland teammember on checkpoint No." + std::to_string(treasurepkey) + "."))
+                            ).send();
+                        }   
+                    }
+                }
+            }
+        });
     }
 
     //2020-06-29: For adding race result (members cup and public events) to the result table (to show up on the leaderboard).
@@ -2922,6 +3049,9 @@ extern "C" {
     }
     else if(code==receiver && action==name("unlockchest").value) {
       execute_action(name(receiver), name(code), &cptblackbill::unlockchest );
+    }
+    else if(code==receiver && action==name("unlocktest").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::unlocktest );
     }
     else if(code==receiver && action==name("erasetreasur").value) {
       execute_action(name(receiver), name(code), &cptblackbill::erasetreasur );

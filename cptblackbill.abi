@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Dec 29 11:54:59 2022",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Mar  2 17:24:26 2023",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -1608,6 +1608,36 @@
             ]
         },
         {
+            "name": "unlocktest",
+            "base": "",
+            "fields": [
+                {
+                    "name": "treasurepkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payouteos",
+                    "type": "asset"
+                },
+                {
+                    "name": "byuser",
+                    "type": "name"
+                },
+                {
+                    "name": "lostdiamondisfound",
+                    "type": "bool"
+                },
+                {
+                    "name": "sponsoritempkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "teammember",
+                    "type": "name"
+                }
+            ]
+        },
+        {
             "name": "updranking",
             "base": "",
             "fields": [
@@ -1854,6 +1884,11 @@
         {
             "name": "unlockchest",
             "type": "unlockchest",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unlocktest",
+            "type": "unlocktest",
             "ricardian_contract": ""
         },
         {
