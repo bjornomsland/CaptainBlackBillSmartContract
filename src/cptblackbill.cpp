@@ -702,7 +702,7 @@ public:
                     //diamondfund_index diamondfund(_code, _code.value);
                     diamondfund.emplace(_self, [&]( auto& row ) { 
                         row.pkey = diamondfund.available_primary_key();
-                        row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                        //row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
                         row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
                         row.diamondValue = eos; 
                         row.foundTimestamp = 0;
@@ -1335,7 +1335,7 @@ public:
                     diamondfund.modify(iterator, _self, [&]( auto& row ) {
                         row.foundTimestamp = now();
                         row.foundInTreasurePkey = treasurepkey;
-                        row.foundByaccount = byuser;
+                        row.foundbyacc = byuser;
                     });                     
                     
                     //Send earned income to the current lost diamond owners and delete rows
@@ -1948,10 +1948,10 @@ public:
             batchName = "redyforpyout"_n;   
         }
         double diamondValue = dmndFundItr->diamondValue.amount;
-        double toDiamondOwners = dmndFundItr->toDiamondOwners.amount;
+        double toDiamondOwners = 0; //dmndFundItr->toDiamondOwners.amount; //Removed 2023-04-12
 
         //Update investor percent and earned provision. 100 updates for each execute.
-        diamondownrs_index diamondownrs(_code, _code.value);
+        /*diamondownrs_index diamondownrs(_code, _code.value);
         auto startItr = diamondownrs.lower_bound(fromPkey);
         auto endItr = diamondownrs.upper_bound(fromPkey + 99);
         for (auto itr = startItr; itr != endItr; itr++) {
@@ -1969,7 +1969,7 @@ public:
                 row.earnedpayout = eosio::asset(earnedProvisionInEos, symbol(symbol_code("EOS"), 4));
                 row.batchname = batchName;
             }); 
-        }
+        } */
     }
 
     [[eosio::action]]
@@ -1984,6 +1984,7 @@ public:
         eosio::asset toTokenHolders = dmndFundItr->toTokenHolders;
 
         //Check that all rows are marked as redyforpyout
+        /*
         uint64_t numberOfDiamondOwners = 0;
         uint64_t numberOfReadyForPayoutRows = 0;
         diamondownrs_index diamondownrs(_code, _code.value);
@@ -2018,14 +2019,16 @@ public:
             if(counter >= 99)
                 break;
         }
+        */
 
         //Check if all diamond owners rows are prepared and deleted. Then add a new diamond with zero value
         //and add payout amount to token holders (use cptblackbill account until percent pr token holders is calculated)
+        /*
         if(itr == diamondownrs.end()){
             diamondfund_index diamondfund(_code, _code.value);
             diamondfund.emplace(_self, [&]( auto& row ) { 
                 row.pkey = diamondfund.available_primary_key();
-                row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                //row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
                 row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
                 row.diamondValue = eosio::asset(0, symbol(symbol_code("EOS"), 4));
                 row.foundTimestamp = 0;
@@ -2047,12 +2050,14 @@ public:
                 });   
             }
         }
+        */
     }
 
     [[eosio::action]]
     void payout(name toAccount) {
         require_auth("cptblackbill"_n);
 
+        /*
         payoutdmndow_index payoutdmndow(_code, _code.value);
         auto itr = payoutdmndow.begin();
         uint64_t counter = 0;
@@ -2074,6 +2079,7 @@ public:
             if(counter > 10)
                 break;
         }
+        */
     }
 
     [[eosio::action]]
@@ -2569,6 +2575,7 @@ private:
         eosio::name conqueredby; //If someone has robbed and conquered the treasure. Conquered by user will get 75% of the treasure value next time it's robbed. The owner will still get 25%
         std::string conqueredimg; //The user who conquered can add another image to the treasure.
         std::string jsondata;  //additional field for other info in json format.
+        
         uint64_t primary_key() const { return  pkey; }
         uint64_t by_owner() const {return owner.value; } //second key, can be non-unique
         double by_latitude() const {return latitude; } //third key, can be non-unique
@@ -2594,18 +2601,24 @@ private:
     
     struct [[eosio::table]] diamondfund {
         uint64_t pkey;
-        eosio::asset toDiamondOwners;
         eosio::asset toTokenHolders;
         eosio::asset diamondValue;
-        std::string memo;
         int32_t foundTimestamp;
         uint64_t foundInTreasurePkey;
-        eosio::name foundByaccount;
+        eosio::name foundbyacc;
+        int32_t filocTimestamp;
+        eosio::name filocbyacc;
+        std::string memo;
 
         uint64_t primary_key() const { return  pkey; }
+        uint64_t by_foundbyacc() const {return foundbyacc.value; } //second key, can be non-unique
+        uint64_t by_filocbyacc() const {return filocbyacc.value; } //third key, can be non-unique
     };
-    typedef eosio::multi_index<"diamondfund"_n, diamondfund> diamondfund_index;
+    typedef eosio::multi_index<"diamondfund"_n, diamondfund, 
+            eosio::indexed_by<"foundbyacc"_n, const_mem_fun<diamondfund, uint64_t, &diamondfund::by_foundbyacc>>,
+            eosio::indexed_by<"filocbyacc"_n, const_mem_fun<diamondfund, uint64_t, &diamondfund::by_filocbyacc>>> diamondfund_index;
 
+    /*
     struct [[eosio::table]] diamondownrs {
         uint64_t pkey;
         eosio::name account;
@@ -2622,7 +2635,8 @@ private:
     typedef eosio::multi_index<"diamondownrs"_n, diamondownrs, 
             eosio::indexed_by<"account"_n, const_mem_fun<diamondownrs, uint64_t, &diamondownrs::by_account>>,
             eosio::indexed_by<"batchname"_n, const_mem_fun<diamondownrs, uint64_t, &diamondownrs::by_batchname>>> diamondownrs_index;
-
+    */
+    
     struct [[eosio::table]] payoutdmndow { //Payout table for diamond owners
         eosio::name account;
         eosio::asset payoutamount;

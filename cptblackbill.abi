@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Mar  2 17:24:26 2023",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Apr 12 14:31:08 2023",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -533,20 +533,12 @@
                     "type": "uint64"
                 },
                 {
-                    "name": "toDiamondOwners",
-                    "type": "asset"
-                },
-                {
                     "name": "toTokenHolders",
                     "type": "asset"
                 },
                 {
                     "name": "diamondValue",
                     "type": "asset"
-                },
-                {
-                    "name": "memo",
-                    "type": "string"
                 },
                 {
                     "name": "foundTimestamp",
@@ -557,42 +549,20 @@
                     "type": "uint64"
                 },
                 {
-                    "name": "foundByaccount",
-                    "type": "name"
-                }
-            ]
-        },
-        {
-            "name": "diamondownrs",
-            "base": "",
-            "fields": [
-                {
-                    "name": "pkey",
-                    "type": "uint64"
-                },
-                {
-                    "name": "account",
+                    "name": "foundbyacc",
                     "type": "name"
                 },
                 {
-                    "name": "investedamount",
-                    "type": "asset"
-                },
-                {
-                    "name": "investedpercent",
-                    "type": "float64"
-                },
-                {
-                    "name": "earnedpayout",
-                    "type": "asset"
-                },
-                {
-                    "name": "timestamp",
+                    "name": "filocTimestamp",
                     "type": "int32"
                 },
                 {
-                    "name": "batchname",
+                    "name": "filocbyacc",
                     "type": "name"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
                 }
             ]
         },
@@ -1927,13 +1897,6 @@
         {
             "name": "diamondfund",
             "type": "diamondfund",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        },
-        {
-            "name": "diamondownrs",
-            "type": "diamondownrs",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
