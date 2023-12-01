@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Apr 12 14:31:08 2023",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Dec  1 09:54:00 2023",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -665,16 +665,6 @@
             ]
         },
         {
-            "name": "erasetcrf",
-            "base": "",
-            "fields": [
-                {
-                    "name": "account",
-                    "type": "name"
-                }
-            ]
-        },
-        {
             "name": "erasetreasur",
             "base": "",
             "fields": [
@@ -769,6 +759,20 @@
                 {
                     "name": "memo",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "modctypeid",
+            "base": "",
+            "fields": [
+                {
+                    "name": "pkey",
+                    "type": "uint64"
+                },
+                {
+                    "name": "cTypeId",
+                    "type": "uint64"
                 }
             ]
         },
@@ -951,30 +955,26 @@
             ]
         },
         {
+            "name": "moduawuser",
+            "base": "",
+            "fields": [
+                {
+                    "name": "waccount",
+                    "type": "name"
+                },
+                {
+                    "name": "uintvalue",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
             "name": "payout",
             "base": "",
             "fields": [
                 {
                     "name": "toAccount",
                     "type": "name"
-                }
-            ]
-        },
-        {
-            "name": "payoutdmndow",
-            "base": "",
-            "fields": [
-                {
-                    "name": "account",
-                    "type": "name"
-                },
-                {
-                    "name": "payoutamount",
-                    "type": "asset"
-                },
-                {
-                    "name": "memo",
-                    "type": "string"
                 }
             ]
         },
@@ -1336,32 +1336,6 @@
             ]
         },
         {
-            "name": "tcrfund",
-            "base": "",
-            "fields": [
-                {
-                    "name": "account",
-                    "type": "name"
-                },
-                {
-                    "name": "investedamount",
-                    "type": "asset"
-                },
-                {
-                    "name": "investorpercent",
-                    "type": "float64"
-                },
-                {
-                    "name": "earnedpayout",
-                    "type": "asset"
-                },
-                {
-                    "name": "timestamp",
-                    "type": "int32"
-                }
-            ]
-        },
-        {
             "name": "teambearland",
             "base": "",
             "fields": [
@@ -1568,6 +1542,10 @@
                     "type": "bool"
                 },
                 {
+                    "name": "doknowdiamondlocation",
+                    "type": "bool"
+                },
+                {
                     "name": "sponsoritempkey",
                     "type": "uint64"
                 },
@@ -1595,6 +1573,10 @@
                 },
                 {
                     "name": "lostdiamondisfound",
+                    "type": "bool"
+                },
+                {
+                    "name": "doknowdiamondlocation",
                     "type": "bool"
                 },
                 {
@@ -1767,11 +1749,6 @@
             "ricardian_contract": ""
         },
         {
-            "name": "erasetcrf",
-            "type": "erasetcrf",
-            "ricardian_contract": ""
-        },
-        {
             "name": "erasetreasur",
             "type": "erasetreasur",
             "ricardian_contract": ""
@@ -1784,6 +1761,11 @@
         {
             "name": "issue",
             "type": "issue",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modctypeid",
+            "type": "modctypeid",
             "ricardian_contract": ""
         },
         {
@@ -1829,6 +1811,11 @@
         {
             "name": "modtreasure",
             "type": "modtreasure",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "moduawuser",
+            "type": "moduawuser",
             "ricardian_contract": ""
         },
         {
@@ -1923,13 +1910,6 @@
             "key_types": []
         },
         {
-            "name": "payoutdmndow",
-            "type": "payoutdmndow",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        },
-        {
             "name": "payouttokenh",
             "type": "payouttokenh",
             "index_type": "i64",
@@ -1995,13 +1975,6 @@
         {
             "name": "stat",
             "type": "currency_stats",
-            "index_type": "i64",
-            "key_names": [],
-            "key_types": []
-        },
-        {
-            "name": "tcrfund",
-            "type": "tcrfund",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
