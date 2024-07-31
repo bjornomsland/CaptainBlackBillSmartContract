@@ -279,15 +279,25 @@ public:
             if(racePkey == 10){
                 //The Lost Diamond Entry fee
                 eosio::asset toTokenHolders = (eos * (20 * 100)) / 10000; //20 percent to BLKBILL token holders
-                eosio::asset toDiamondValue = (eos * (70 * 100)) / 10000; //70 percent to diamond value //2023-09-24: Changed from 80% to 70% according to new business model
+                eosio::asset toOperationalCosts = (eos * (10 * 100)) / 10000; //10 percent to cptbbfinanc1 for operational costs
+                //eosio::asset toDiamondValue = (eos * (20 * 100)) / 10000; //20 percent to diamond value //2024-02-16: Changed from 70% to 20%. The other 50% will be distributed to random checkpoints based on the new Distribution Of Money logic  
+                //50% to random checkpoints based on content creators work (Distribution of Money algorithm that runs every day) //2024-02-16
                 //10% to operating cost       (eos * (10 * 100)) / 10000; //10 percent to operating costs for smart contract (should be sent to cptbbfinanc1?) //2023-09-24
                 diamondfund_index diamondfund(_self, _self.value);
                 auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
                 auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
                 diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
                     row.toTokenHolders += toTokenHolders; //20%
-                    row.diamondValue += toDiamondValue; //70%
+                    //row.diamondValue += toDiamondValue; //20% 2024-07-31 Removed. Level-Up payments only fund checkpoints, not the diamond.
                 });
+
+                action(
+                    permission_level{ get_self(), "active"_n },
+                    "eosio.token"_n, "transfer"_n,
+                    std::make_tuple(get_self(), "cptbbfinanc1"_n, 
+                                    toOperationalCosts, 
+                                    std::string("LevelUp-payment fee for operational costs." ))
+                ).send(); 
             }
             else{
                 racepayments_index racepayments(_self, _self.value);
@@ -613,6 +623,32 @@ public:
             });  
         
         }
+        else if (memo.rfind("AddToDiamond:", 0) == 0) { //2024-06-01
+            std::string assertMsg = "";
+            eosio_assert(eos >= getPriceForCheckTreasureValueInEOS(), "Transfered amount is below minimum.");
+            
+            diamondfund_index diamondfund(_self, _self.value);
+            auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
+            auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
+
+            if(diamondFundIterator->foundTimestamp == 0){
+                //present diamond has not been found. Add value to existing diamond
+                diamondfund.modify(diamondFundIterator, _self, [&]( auto& row ) {
+                    row.diamondValue += eos; //100%
+                });  
+            }
+            else{
+                //present diamond has been found. Create new diamond and add transferred value to new diamond
+                //diamondfund_index diamondfund(_code, _code.value);
+                diamondfund.emplace(_self, [&]( auto& row ) { 
+                    row.pkey = diamondfund.available_primary_key();
+                    //row.toDiamondOwners = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                    row.toTokenHolders = eosio::asset(0, symbol(symbol_code("EOS"), 4));
+                    row.diamondValue = eos; 
+                    row.foundTimestamp = 0;
+                });
+            }
+        }
         else{
             
             /* 2022-02-10 Replace by MintCheckpoint in Transfer
@@ -637,8 +673,8 @@ public:
             }
             */
 
-            if(eos >= getPriceForCheckTreasureValueInEOS())
-            {
+            //if(eos >= getPriceForCheckTreasureValueInEOS())
+            //{
                 //Amounts are added to the lost diamond ownership as investment to provision of income 
                 //from check- and unlock-transactions. Accounts that activate treasures are also added as lost
                 //diamonds owners
@@ -664,6 +700,7 @@ public:
                 }*/
                 
                 //Add to diamond fund
+                /*
                 diamondfund_index diamondfund(_self, _self.value);
                 auto diamondFundItr = diamondfund.rbegin(); //Find the last added diamond fund item
                 auto diamondFundIterator = diamondfund.find(diamondFundItr->pkey);
@@ -685,16 +722,17 @@ public:
                         row.foundTimestamp = 0;
                     });
                 }
+                */
 
                 //cptblackbill::issue(from, eosio::asset(10, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLs for investing in the lost diamond.") );
             
-            }
-            else{
+            //}
+            //else{
                 //All other smaller amounts will initiate BLKBILL token issue
                 //cptblackbill::issue(from, eosio::asset(1, symbol(symbol_code("BLKBILL"), 4)), std::string("Mined BLKBILLS for using Captain Black Bill.") );
             
                 //eosio_assert(1 == 0 , "Invalid transfer to cpt.blackbill smart contract. Minimum amount is $1.");
-            }
+            //}
         }
     }
     //=====================================================================
@@ -2102,7 +2140,8 @@ public:
         
         auto iterator = treasures.find(pkey);
         eosio_assert(iterator != treasures.end(), "Treasure does not exist.");
-        eosio_assert(user == iterator->owner || user == iterator->conqueredby, "You don't have access to reset the secret code on this treasure.");
+        eosio_assert(user == iterator->owner || user == iterator->conqueredby || user == "cptsambelamy"_n, "You don't have access to reset the secret code on this treasure.");
+        //cptsambelamy is janitor and allowed to replace secret codes on behalf of everyone
         //eosio_assert(iterator->status == "active", "Treasure is not active.");
         
         treasures.modify(iterator, _self, [&]( auto& row ) {
@@ -2369,6 +2408,28 @@ public:
         auto iterator = results.find(pkey);
         eosio_assert(iterator != results.end(), "Result does not exist.");
         results.erase(iterator);
+    }
+
+    [[eosio::action]]
+    void clearresult() //2024-05-21
+    {
+        require_auth("cptblackbill"_n);
+        
+        //Remove race results older than 24 hours
+        results_index results(_self, _self.value);
+        auto resultsItr = results.begin();
+        uint64_t counter = 0;
+        while(resultsItr != results.end()) {
+            if(resultsItr->timestamp < (now() - 2592000)){ //Timestamp older than 30 days
+                resultsItr = results.erase(resultsItr);
+            } 
+
+            //Prevent deadline exceeded error
+            counter++;
+            if(counter > 500){
+                break;
+            }
+        }
     }
 
     /*
@@ -3128,6 +3189,9 @@ extern "C" {
     }
     else if(code==receiver && action==name("eraseresult").value) {
       execute_action(name(receiver), name(code), &cptblackbill::eraseresult );
+    }
+    else if(code==receiver && action==name("clearresult").value) {
+      execute_action(name(receiver), name(code), &cptblackbill::clearresult );
     }
     else if(code==receiver && action==name("upsertcrew").value) {
       execute_action(name(receiver), name(code), &cptblackbill::upsertcrew );

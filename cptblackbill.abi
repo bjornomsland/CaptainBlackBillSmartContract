@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Dec  1 09:54:00 2023",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Jul 31 14:56:48 2024",
     "version": "eosio::abi/1.0",
     "structs": [
         {
@@ -452,6 +452,11 @@
         },
         {
             "name": "clearacerslt",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "clearresult",
             "base": "",
             "fields": []
         },
@@ -1701,6 +1706,11 @@
         {
             "name": "clearacerslt",
             "type": "clearacerslt",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "clearresult",
+            "type": "clearresult",
             "ricardian_contract": ""
         },
         {
