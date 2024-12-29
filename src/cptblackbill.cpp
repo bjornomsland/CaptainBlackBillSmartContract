@@ -611,6 +611,7 @@ public:
                 row.rankingpoint = 5;
                 row.expirationdate = now() + 94608000; //Treasure expires after three years if not found
                 row.status = "active";
+                row.jsondata = mintId;
                 row.timestamp = now();
             });
 
